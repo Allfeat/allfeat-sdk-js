@@ -1,0 +1,46 @@
+{
+  "name": "@allfeat/sdk",
+  "version": "1.0.0",
+  "description": "SDK for interacting with the Allfeat blockchain",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.mjs",
+  "type": "module",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint 'src/**/*.ts'",
+    "test": "jest",
+    "generate-chaintypes-from-devnet": "dedot chaintypes -w ws://127.0.0.1:9944 -o ./src/interfaces/ -c Allfeat",
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allfeat/sdk-js.git"
+  },
+  "devDependencies": {
+    "@dedot/chaintypes": "^0.48.0",
+    "@types/bun": "^1.1.15",
+    "@types/jest": "^29.5.14",
+    "eslint": "^9.17.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@polkadot/keyring": "^13.3.1",
+    "@polkadot/types-codec": "^15.2.1",
+    "@polkadot/util-crypto": "^13.3.1",
+    "dedot": "^0.6.1"
+  }
+}
