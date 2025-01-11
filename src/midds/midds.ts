@@ -1,6 +1,7 @@
 import {AllfeatClient} from "../client";
 import {Callback, ISubmittableExtrinsic, ISubmittableResult} from "dedot/types";
 import {KeyringPair} from "@polkadot/keyring/types";
+import { MiddsSubstrateType } from '../types';
 
 export abstract class Midds<SubstrateType> implements IMidds<SubstrateType> {
     private readonly _palletName: string;
@@ -77,7 +78,7 @@ export abstract class Midds<SubstrateType> implements IMidds<SubstrateType> {
     }
 }
 
-export interface IMidds<SubstrateType> {
+export interface IMidds<SubstrateType extends MiddsSubstrateType> {
     /**
      * Ensure that the Midds have at least one required field not empty.
      */
