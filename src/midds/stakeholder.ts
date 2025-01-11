@@ -2,7 +2,7 @@ import {MiddsStakeholderStakeholder} from "../interfaces/allfeat";
 import {IMidds, IRegisterResult, Midds} from "./midds";
 import { toHex } from 'dedot/utils';
 
-export class Stakeholder extends Midds<MiddsStakeholderStakeholder> {
+export class Stakeholder extends Midds {
     private _IPINameNumber: number | null = null;
     private _firstName: string | null = null;
     private _lastName: string | null = null;

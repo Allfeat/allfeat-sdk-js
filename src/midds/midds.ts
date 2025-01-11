@@ -3,7 +3,7 @@ import {Callback, ISubmittableExtrinsic, ISubmittableResult} from "dedot/types";
 import {KeyringPair} from "@polkadot/keyring/types";
 import { MiddsSubstrateType } from '../types';
 
-export abstract class Midds<SubstrateType> implements IMidds<SubstrateType> {
+export abstract class Midds implements IMidds {
     private readonly _palletName: string;
 
     protected constructor(palletName: string) {
@@ -11,7 +11,7 @@ export abstract class Midds<SubstrateType> implements IMidds<SubstrateType> {
     }
 
     abstract get isValid(): boolean;
-    abstract parseIntoSubstrateType(): SubstrateType;
+    abstract parseIntoSubstrateType(): MiddsSubstrateType;
 
     createRegisterExtrinsic(client: AllfeatClient): ISubmittableExtrinsic {
         const extrinsicFn = client.tx[this._palletName]?.register;
@@ -78,7 +78,7 @@ export abstract class Midds<SubstrateType> implements IMidds<SubstrateType> {
     }
 }
 
-export interface IMidds<SubstrateType extends MiddsSubstrateType> {
+export interface IMidds {
     /**
      * Ensure that the Midds have at least one required field not empty.
      */
@@ -87,7 +87,7 @@ export interface IMidds<SubstrateType extends MiddsSubstrateType> {
     /**
      * Parse this actual Midds instance into the Substrate API ready Midds type.
      */
-    parseIntoSubstrateType(): SubstrateType
+    parseIntoSubstrateType(): MiddsSubstrateType
 
     /**
      * Create an extrinsic to submit to the network from the current Midds data

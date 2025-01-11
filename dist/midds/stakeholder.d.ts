@@ -1,6 +1,6 @@
 import { MiddsStakeholderStakeholder } from "../interfaces/allfeat";
 import { Midds } from "./midds";
-export declare class Stakeholder extends Midds<MiddsStakeholderStakeholder> {
+export declare class Stakeholder extends Midds {
     private _IPINameNumber;
     private _firstName;
     private _lastName;
