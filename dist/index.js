@@ -19,6 +19,7 @@ __exportStar(require("./provider"), exports);
 __exportStar(require("./client"), exports);
 __exportStar(require("./types"), exports);
 __exportStar(require("./midds/midds"), exports);
+__exportStar(require("./midds/input"), exports);
 var stakeholder_1 = require("./midds/stakeholder");
 Object.defineProperty(exports, "Stakeholder", { enumerable: true, get: function () { return stakeholder_1.Stakeholder; } });
 //# sourceMappingURL=index.js.map
