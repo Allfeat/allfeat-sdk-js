@@ -1,83 +1,85 @@
 import {MiddsStakeholderStakeholder} from "../interfaces/allfeat";
-import {IMidds, IRegisterResult, Midds} from "./midds";
-import { toHex } from 'dedot/utils';
+import { Midds } from "./midds";
+import { MiddsNumber, MiddsString } from './input';
 
 export class Stakeholder extends Midds {
-    private _IPINameNumber: number | null = null;
-    private _firstName: string | null = null;
-    private _lastName: string | null = null;
-    private _nickname: string | null = null;
-
     constructor() {
-        super("stakeholders");
+        const data = [
+          new IPINameNumber(),
+          new FirstName(),
+          new LastName(),
+          new Nickname()
+        ]
+        super("stakeholders", data);
     }
 
-    get isValid(): boolean {
-        return (
-            this._IPINameNumber !== null ||
-            this._firstName !== null ||
-            this._lastName !== null ||
-            this._nickname !== null
-        );
+    public set IPI(IPI: number | null ) {
+        this.data[0].Value = IPI
     }
 
-    public set IPINameNumber(IPINameNumber: number) {
-        if (IPINameNumber > 99999999999 || IPINameNumber < 100000000) {
-            throw new Error('IPI Name Number cant have more than 11 digits and less than 9 digits.');
-        }
-
-        this._IPINameNumber = IPINameNumber;
+    public set FirstName(FirstName: string | null ) {
+        this.data[1].Value = FirstName
     }
 
-    public set FirstName(FirstName: string) {
-        if (FirstName.length > 128) {
-            throw new Error('First name must be less than 128 characters.');
-        }
-
-        this._firstName = FirstName;
+    public set LastName(LastName: string | null ) {
+        this.data[2].Value = LastName
     }
 
-    public set LastName(LastName: string) {
-        if (LastName.length > 128) {
-            throw new Error('Last name must be less than 128 characters.');
-        }
-
-        this._lastName = LastName;
+    public set Nickname(Nickname: string | null ) {
+        this.data[3].Value = Nickname
     }
 
-    public set Nickname(Nickname: string) {
-        if (Nickname.length > 128) {
-            throw new Error('Nickname must be less than 128 characters.');
-        }
-
-        this._nickname = Nickname;
-    }
-
-    public get IPINameNumber(): number | null {
-        return this._IPINameNumber;
+    public get IPI(): number | null {
+        return this.data[0].Value
     }
 
     public get FirstName(): string | null {
-        return this._firstName
+        return this.data[1].Value
     }
 
     public get LastName(): string | null {
-        return this._lastName
+        return this.data[2].Value
     }
 
-    public get NickName(): string | null {
-        return this._nickname
+    public get Nickname(): string | null {
+        return this.data[3].Value
     }
 
     public parseIntoSubstrateType(): MiddsStakeholderStakeholder {
-        if (!this.isValid) {
-            throw new Error('Invalid Midds data for parsing.');
-        }
         return {
-            ipi: this._IPINameNumber ? BigInt(this._IPINameNumber) : undefined,
-            firstName: this._firstName ? toHex(this._firstName) : undefined,
-            lastName: this._lastName ? toHex(this._lastName) : undefined,
-            nickname: this._nickname ? toHex(this._nickname) : undefined
+            ipi: this.data[0].isValid && this.data[0].Value ? this.data[0].intoSubstrateType() : undefined,
+            firstName: this.data[1].isValid && this.data[1].Value ? this.data[1].intoSubstrateType() : undefined,
+            lastName: this.data[2].isValid && this.data[2].Value ? this.data[2].intoSubstrateType() : undefined,
+            nickname: this.data[3].isValid && this.data[3].Value ? this.data[3].intoSubstrateType() : undefined,
         }
+    }
+}
+
+export class IPINameNumber extends MiddsNumber {
+    constructor() {
+        super("IPI Name Number");
+    }
+
+    get isValid(): boolean {
+        // IPI Name number should be between 9 and 11 digits max
+        return !(this.Value && (this.Value > 99999999999 || this.Value < 100000000));
+    }
+}
+
+export class FirstName extends MiddsString {
+    constructor() {
+        super("First Name", null, 128);
+    }
+}
+
+export class LastName extends MiddsString {
+    constructor() {
+        super("Last Name", null, 128);
+    }
+}
+
+export class Nickname extends MiddsString {
+    constructor() {
+        super("Nickname", null, 128);
     }
 }

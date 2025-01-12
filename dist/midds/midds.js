@@ -2,8 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Midds = void 0;
 class Midds {
-    constructor(palletName) {
+    constructor(palletName, data) {
         this._palletName = palletName;
+        this.data = data;
+    }
+    get isValid() {
+        return this.data.every((input) => input.isValid);
     }
     createRegisterExtrinsic(client) {
         const extrinsicFn = client.tx[this._palletName]?.register;

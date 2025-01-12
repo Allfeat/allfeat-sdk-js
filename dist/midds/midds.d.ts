@@ -2,15 +2,18 @@ import { AllfeatClient } from "../client";
 import { Callback, ISubmittableExtrinsic, ISubmittableResult } from "dedot/types";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { MiddsSubstrateType } from '../types';
+import { IMiddsInput } from './input';
 export declare abstract class Midds implements IMidds {
     private readonly _palletName;
-    protected constructor(palletName: string);
-    abstract get isValid(): boolean;
+    data: IMiddsInput<any, any>[];
+    protected constructor(palletName: string, data: IMiddsInput<any, any>[]);
     abstract parseIntoSubstrateType(): MiddsSubstrateType;
+    get isValid(): boolean;
     createRegisterExtrinsic(client: AllfeatClient): ISubmittableExtrinsic;
     register(client: AllfeatClient, account: KeyringPair | string, callback?: Callback<ISubmittableResult>): Promise<IRegisterResult>;
 }
 export interface IMidds {
+    data: IMiddsInput<any, any>[];
     /**
      * Ensure that the Midds have at least one required field not empty.
      */

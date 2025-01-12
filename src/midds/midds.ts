@@ -2,16 +2,22 @@ import {AllfeatClient} from "../client";
 import {Callback, ISubmittableExtrinsic, ISubmittableResult} from "dedot/types";
 import {KeyringPair} from "@polkadot/keyring/types";
 import { MiddsSubstrateType } from '../types';
+import { IMiddsInput } from './input';
 
 export abstract class Midds implements IMidds {
     private readonly _palletName: string;
+    public data: IMiddsInput<any, any>[];
 
-    protected constructor(palletName: string) {
+    protected constructor(palletName: string, data: IMiddsInput<any, any>[]) {
         this._palletName = palletName;
+        this.data = data;
     }
 
-    abstract get isValid(): boolean;
     abstract parseIntoSubstrateType(): MiddsSubstrateType;
+
+    get isValid(): boolean {
+        return this.data.every((input) => input.isValid);
+    }
 
     createRegisterExtrinsic(client: AllfeatClient): ISubmittableExtrinsic {
         const extrinsicFn = client.tx[this._palletName]?.register;
@@ -79,6 +85,8 @@ export abstract class Midds implements IMidds {
 }
 
 export interface IMidds {
+    data: IMiddsInput<any, any>[]
+
     /**
      * Ensure that the Midds have at least one required field not empty.
      */

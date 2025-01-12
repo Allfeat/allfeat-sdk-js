@@ -21,8 +21,8 @@ describe("E2E: MIDDS Stakeholder", () => {
     })
 
     it("should register the correct data on-chain", async () => {
-        stakeholder.IPINameNumber = 1234567890
-        stakeholder.Nickname = "Alice"
+        stakeholder.IPI = 1234567890;
+        stakeholder.Nickname = "Alice";
 
         await cryptoWaitReady();
         const keyring = new Keyring({ type: 'sr25519' });

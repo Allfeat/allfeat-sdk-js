@@ -1,69 +1,78 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Stakeholder = void 0;
+exports.Nickname = exports.LastName = exports.FirstName = exports.IPINameNumber = exports.Stakeholder = void 0;
 const midds_1 = require("./midds");
-const utils_1 = require("dedot/utils");
+const input_1 = require("./input");
 class Stakeholder extends midds_1.Midds {
     constructor() {
-        super("stakeholders");
-        this._IPINameNumber = null;
-        this._firstName = null;
-        this._lastName = null;
-        this._nickname = null;
+        const data = [
+            new IPINameNumber(),
+            new FirstName(),
+            new LastName(),
+            new Nickname()
+        ];
+        super("stakeholders", data);
     }
-    get isValid() {
-        return (this._IPINameNumber !== null ||
-            this._firstName !== null ||
-            this._lastName !== null ||
-            this._nickname !== null);
-    }
-    set IPINameNumber(IPINameNumber) {
-        if (IPINameNumber > 99999999999 || IPINameNumber < 100000000) {
-            throw new Error('IPI Name Number cant have more than 11 digits and less than 9 digits.');
-        }
-        this._IPINameNumber = IPINameNumber;
+    set IPI(IPI) {
+        this.data[0].Value = IPI;
     }
     set FirstName(FirstName) {
-        if (FirstName.length > 128) {
-            throw new Error('First name must be less than 128 characters.');
-        }
-        this._firstName = FirstName;
+        this.data[1].Value = FirstName;
     }
     set LastName(LastName) {
-        if (LastName.length > 128) {
-            throw new Error('Last name must be less than 128 characters.');
-        }
-        this._lastName = LastName;
+        this.data[2].Value = LastName;
     }
     set Nickname(Nickname) {
-        if (Nickname.length > 128) {
-            throw new Error('Nickname must be less than 128 characters.');
-        }
-        this._nickname = Nickname;
+        this.data[3].Value = Nickname;
     }
-    get IPINameNumber() {
-        return this._IPINameNumber;
+    get IPI() {
+        return this.data[0].Value;
     }
     get FirstName() {
-        return this._firstName;
+        return this.data[1].Value;
     }
     get LastName() {
-        return this._lastName;
+        return this.data[2].Value;
     }
-    get NickName() {
-        return this._nickname;
+    get Nickname() {
+        return this.data[3].Value;
     }
     parseIntoSubstrateType() {
-        if (!this.isValid) {
-            throw new Error('Invalid Midds data for parsing.');
-        }
         return {
-            ipi: this._IPINameNumber ? BigInt(this._IPINameNumber) : undefined,
-            firstName: this._firstName ? (0, utils_1.toHex)(this._firstName) : undefined,
-            lastName: this._lastName ? (0, utils_1.toHex)(this._lastName) : undefined,
-            nickname: this._nickname ? (0, utils_1.toHex)(this._nickname) : undefined
+            ipi: this.data[0].isValid && this.data[0].Value ? this.data[0].intoSubstrateType() : undefined,
+            firstName: this.data[1].isValid && this.data[1].Value ? this.data[1].intoSubstrateType() : undefined,
+            lastName: this.data[2].isValid && this.data[2].Value ? this.data[2].intoSubstrateType() : undefined,
+            nickname: this.data[3].isValid && this.data[3].Value ? this.data[3].intoSubstrateType() : undefined,
         };
     }
 }
 exports.Stakeholder = Stakeholder;
+class IPINameNumber extends input_1.MiddsNumber {
+    constructor() {
+        super("IPI Name Number");
+    }
+    get isValid() {
+        // IPI Name number should be between 9 and 11 digits max
+        return !(this.Value && (this.Value > 99999999999 || this.Value < 100000000));
+    }
+}
+exports.IPINameNumber = IPINameNumber;
+class FirstName extends input_1.MiddsString {
+    constructor() {
+        super("First Name", null, 128);
+    }
+}
+exports.FirstName = FirstName;
+class LastName extends input_1.MiddsString {
+    constructor() {
+        super("Last Name", null, 128);
+    }
+}
+exports.LastName = LastName;
+class Nickname extends input_1.MiddsString {
+    constructor() {
+        super("Nickname", null, 128);
+    }
+}
+exports.Nickname = Nickname;
 //# sourceMappingURL=stakeholder.js.map
