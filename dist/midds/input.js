@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.MiddsNumber = exports.MiddsString = exports.MiddsInput = void 0;
-const utils_1 = require("dedot/utils");
-class MiddsInput {
+import { toHex } from 'dedot/utils';
+export class MiddsInput {
     constructor(name) {
         this.value = null;
         this.name = name;
@@ -11,8 +8,7 @@ class MiddsInput {
     set Value(value) { this.value = value; }
     get Name() { return this.name; }
 }
-exports.MiddsInput = MiddsInput;
-class MiddsString extends MiddsInput {
+export class MiddsString extends MiddsInput {
     constructor(name, regex, maxLength) {
         super(name);
         this._regex = regex;
@@ -25,7 +21,7 @@ class MiddsString extends MiddsInput {
             throw new Error(`Null value cannot be parsed to Substrate type`);
         }
         else {
-            return (0, utils_1.toHex)(this.Value);
+            return toHex(this.Value);
         }
     }
     get isValid() {
@@ -35,8 +31,7 @@ class MiddsString extends MiddsInput {
         return true;
     }
 }
-exports.MiddsString = MiddsString;
-class MiddsNumber extends MiddsInput {
+export class MiddsNumber extends MiddsInput {
     constructor(name) {
         super(name);
     }
@@ -48,5 +43,4 @@ class MiddsNumber extends MiddsInput {
             return BigInt(this.Value);
     }
 }
-exports.MiddsNumber = MiddsNumber;
 //# sourceMappingURL=input.js.map

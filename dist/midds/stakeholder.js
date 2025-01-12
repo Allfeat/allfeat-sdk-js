@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Nickname = exports.LastName = exports.FirstName = exports.IPINameNumber = exports.Stakeholder = void 0;
-const midds_1 = require("./midds");
-const input_1 = require("./input");
-class Stakeholder extends midds_1.Midds {
+import { Midds } from "./midds";
+import { MiddsNumber, MiddsString } from './input';
+export class Stakeholder extends Midds {
     constructor() {
         const data = [
             new IPINameNumber(),
@@ -46,8 +43,7 @@ class Stakeholder extends midds_1.Midds {
         };
     }
 }
-exports.Stakeholder = Stakeholder;
-class IPINameNumber extends input_1.MiddsNumber {
+export class IPINameNumber extends MiddsNumber {
     constructor() {
         super("IPI Name Number");
     }
@@ -56,23 +52,19 @@ class IPINameNumber extends input_1.MiddsNumber {
         return !(this.Value && (this.Value > 99999999999 || this.Value < 100000000));
     }
 }
-exports.IPINameNumber = IPINameNumber;
-class FirstName extends input_1.MiddsString {
+export class FirstName extends MiddsString {
     constructor() {
         super("First Name", null, 128);
     }
 }
-exports.FirstName = FirstName;
-class LastName extends input_1.MiddsString {
+export class LastName extends MiddsString {
     constructor() {
         super("Last Name", null, 128);
     }
 }
-exports.LastName = LastName;
-class Nickname extends input_1.MiddsString {
+export class Nickname extends MiddsString {
     constructor() {
         super("Nickname", null, 128);
     }
 }
-exports.Nickname = Nickname;
 //# sourceMappingURL=stakeholder.js.map

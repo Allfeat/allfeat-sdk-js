@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Midds = void 0;
-class Midds {
+export class Midds {
     constructor(palletName, data) {
         this._palletName = palletName;
         this.data = data;
@@ -61,5 +58,4 @@ class Midds {
         });
     }
 }
-exports.Midds = Midds;
 //# sourceMappingURL=midds.js.map

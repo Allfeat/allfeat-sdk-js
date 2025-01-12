@@ -1,12 +1,9 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AllfeatProvider = void 0;
-const dedot_1 = require("dedot");
+import { WsProvider } from "dedot";
 const providersUrl = {
     melodie: 'wss://melodie-rpc.allfeat.io',
     devnet: 'ws://127.0.0.1:9944'
 };
-class AllfeatProvider extends dedot_1.WsProvider {
+export class AllfeatProvider extends WsProvider {
     /**
      * Create a Provider instance for a specific Allfeat network
      * @param networkOrUrl - Network to connect to ('melodie' or 'devnet' or custom URL)
@@ -27,5 +24,4 @@ class AllfeatProvider extends dedot_1.WsProvider {
         return Object.keys(providersUrl);
     }
 }
-exports.AllfeatProvider = AllfeatProvider;
 //# sourceMappingURL=provider.js.map

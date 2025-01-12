@@ -1,10 +1,42 @@
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/index.ts
+var index_exports = {};
+__export(index_exports, {
+  AllfeatClient: () => AllfeatClient,
+  AllfeatProvider: () => AllfeatProvider,
+  Midds: () => Midds,
+  MiddsInput: () => MiddsInput,
+  MiddsNumber: () => MiddsNumber,
+  MiddsString: () => MiddsString,
+  Stakeholder: () => Stakeholder
+});
+module.exports = __toCommonJS(index_exports);
+
 // src/provider.ts
-import { WsProvider } from "dedot";
+var import_dedot = require("dedot");
 var providersUrl = {
   melodie: "wss://melodie-rpc.allfeat.io",
   devnet: "ws://127.0.0.1:9944"
 };
-var AllfeatProvider = class extends WsProvider {
+var AllfeatProvider = class extends import_dedot.WsProvider {
   /**
    * Create a Provider instance for a specific Allfeat network
    * @param networkOrUrl - Network to connect to ('melodie' or 'devnet' or custom URL)
@@ -25,13 +57,13 @@ var AllfeatProvider = class extends WsProvider {
 };
 
 // src/client.ts
-import { DedotClient } from "dedot";
-var AllfeatClient = class extends DedotClient {
+var import_dedot2 = require("dedot");
+var AllfeatClient = class extends import_dedot2.DedotClient {
   constructor(provider) {
     super(provider);
   }
   static new(provider) {
-    return DedotClient.new(provider);
+    return import_dedot2.DedotClient.new(provider);
   }
 };
 
@@ -99,7 +131,7 @@ var Midds = class {
 };
 
 // src/midds/input.ts
-import { toHex } from "dedot/utils";
+var import_utils = require("dedot/utils");
 var MiddsInput = class {
   constructor(name) {
     this.value = null;
@@ -131,7 +163,7 @@ var MiddsString = class extends MiddsInput {
     if (!this.Value) {
       throw new Error(`Null value cannot be parsed to Substrate type`);
     } else {
-      return toHex(this.Value);
+      return (0, import_utils.toHex)(this.Value);
     }
   }
   get isValid() {
@@ -219,7 +251,8 @@ var Nickname = class extends MiddsString {
     super("Nickname", null, 128);
   }
 };
-export {
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
   AllfeatClient,
   AllfeatProvider,
   Midds,
@@ -227,4 +260,4 @@ export {
   MiddsNumber,
   MiddsString,
   Stakeholder
-};
+});
