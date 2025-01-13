@@ -14,7 +14,7 @@ export interface IMiddsString extends IMiddsInput<string, `0x${string}`> {
 }
 
 export abstract class MiddsInput<T, SubstrateType> implements IMiddsInput<T, SubstrateType> {
-  private value: T | null = null;
+  protected value: T | null = null;
   private readonly name: string;
 
   protected constructor(name: string) {
@@ -42,6 +42,8 @@ export abstract class MiddsString extends MiddsInput<string, `0x${string}`> impl
     this._maxLength = maxLength;
   }
 
+  public get Value(): string | null { return this.value }
+
   public get MaxLength(): number { return this._maxLength }
 
   public get Regex(): RegExp | null { return this._regex }
@@ -55,10 +57,19 @@ export abstract class MiddsString extends MiddsInput<string, `0x${string}`> impl
   }
 
   public get isValid(): boolean {
+    let regexAssert: boolean = true;
     if (this._regex && this.Value) {
-      return this._regex.test(this.Value);
+      regexAssert = this._regex.test(this.Value);
     }
-    return true;
+    return !(regexAssert && this.Value && this.Value.length > this.MaxLength);
+  }
+
+  public set Value(value: string | null) {
+    if (value?.trim() === "") {
+      this.value = null;
+      return;
+    }
+    this.value = value;
   }
 }
 

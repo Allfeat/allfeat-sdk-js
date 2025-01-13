@@ -3,20 +3,28 @@ import {Callback, ISubmittableExtrinsic, ISubmittableResult} from "dedot/types";
 import {KeyringPair} from "@polkadot/keyring/types";
 import { MiddsSubstrateType } from '../types';
 import { IMiddsInput } from './input';
+import { IKeyringPair, Signer } from '@polkadot/types/types';
 
-export abstract class Midds implements IMidds {
+export abstract class Midds<T extends Record<string, IMiddsInput<any, any>>> implements IMidds<T> {
     private readonly _palletName: string;
-    public data: IMiddsInput<any, any>[];
+    public inputs: T
 
-    protected constructor(palletName: string, data: IMiddsInput<any, any>[]) {
+    protected constructor(palletName: string, inputs: T) {
         this._palletName = palletName;
-        this.data = data;
+        this.inputs = inputs
+    }
+
+    getInput<K extends keyof T>(key: K): T[K] {
+        return this.inputs[key];
     }
 
     abstract parseIntoSubstrateType(): MiddsSubstrateType;
 
     get isValid(): boolean {
-        return this.data.every((input) => input.isValid);
+        const inputs = Object.values(this.inputs);
+
+        // At least one input should be filled and they all meet own valid condition.
+        return inputs.every((input) => input.isValid) && inputs.some((input) => input.Value !== null);
     }
 
     createRegisterExtrinsic(client: AllfeatClient): ISubmittableExtrinsic {
@@ -27,10 +35,11 @@ export abstract class Midds implements IMidds {
         return extrinsicFn(this.parseIntoSubstrateType());
     }
 
-    register(client: AllfeatClient, account: KeyringPair | string, callback?: Callback<ISubmittableResult>): Promise<IRegisterResult> {
+    register(client: AllfeatClient, account: IKeyringPair | string, signer?: Signer, callback?: Callback<ISubmittableResult>): Promise<IRegisterResult> {
         return new Promise(async (resolve, reject) => {
             try {
-                const unsub = await this.createRegisterExtrinsic(client).signAndSend(account, (result) => {
+                const options = signer ? { signer } : {};
+                const unsub = await this.createRegisterExtrinsic(client).signAndSend(account, options, (result) => {
                     if (callback) {
                         callback(result);
                     }
@@ -84,8 +93,10 @@ export abstract class Midds implements IMidds {
     }
 }
 
-export interface IMidds {
-    data: IMiddsInput<any, any>[]
+export interface IMidds<T> {
+    inputs: T
+
+    getInput<K extends keyof T>(key: K): T[K]
 
     /**
      * Ensure that the Midds have at least one required field not empty.
@@ -105,7 +116,7 @@ export interface IMidds {
 
     register(client: AllfeatClient, account: KeyringPair | string): Promise<IRegisterResult>
 
-    register(client: AllfeatClient, account: KeyringPair | string, callback: Callback<ISubmittableResult>): Promise<IRegisterResult>
+    register(client: AllfeatClient, account: KeyringPair | string, signer: Signer, callback: Callback<ISubmittableResult>): Promise<IRegisterResult>
 }
 
 export interface IRegisterResult {

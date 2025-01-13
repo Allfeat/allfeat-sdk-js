@@ -1,56 +1,64 @@
 import {MiddsStakeholderStakeholder} from "../interfaces/allfeat";
 import { Midds } from "./midds";
-import { MiddsNumber, MiddsString } from './input';
+import { IMiddsInput, MiddsNumber, MiddsString } from './input';
 
-export class Stakeholder extends Midds {
+interface StakeholderInputs {
+    [key: string]: IMiddsInput<any, any>;
+    ipi: IPINameNumber;
+    firstName: FirstName;
+    lastName: LastName;
+    nickname: Nickname;
+}
+
+export class Stakeholder extends Midds<StakeholderInputs> {
     constructor() {
-        const data = [
-          new IPINameNumber(),
-          new FirstName(),
-          new LastName(),
-          new Nickname()
-        ]
-        super("stakeholders", data);
+        const inputs: StakeholderInputs = {
+            ipi: new IPINameNumber(),
+            firstName: new FirstName(),
+            lastName: new LastName(),
+            nickname: new Nickname(),
+        }
+        super("stakeholders", inputs);
     }
 
     public set IPI(IPI: number | null ) {
-        this.data[0].Value = IPI
+        this.getInput('ipi').Value = IPI
     }
 
     public set FirstName(FirstName: string | null ) {
-        this.data[1].Value = FirstName
+        this.getInput('firstName').Value = FirstName;
     }
 
     public set LastName(LastName: string | null ) {
-        this.data[2].Value = LastName
+        this.getInput('lastName').Value = LastName;
     }
 
     public set Nickname(Nickname: string | null ) {
-        this.data[3].Value = Nickname
+        this.getInput('nickname').Value = Nickname;
     }
 
-    public get IPI(): number | null {
-        return this.data[0].Value
+    public get IPI(): IPINameNumber {
+        return this.getInput('ipi')
     }
 
-    public get FirstName(): string | null {
-        return this.data[1].Value
+    public get FirstName(): FirstName {
+        return this.getInput('firstName')
     }
 
-    public get LastName(): string | null {
-        return this.data[2].Value
+    public get LastName(): LastName {
+        return this.getInput('lastName')
     }
 
-    public get Nickname(): string | null {
-        return this.data[3].Value
+    public get Nickname(): Nickname{
+        return this.getInput('nickname')
     }
 
     public parseIntoSubstrateType(): MiddsStakeholderStakeholder {
         return {
-            ipi: this.data[0].isValid && this.data[0].Value ? this.data[0].intoSubstrateType() : undefined,
-            firstName: this.data[1].isValid && this.data[1].Value ? this.data[1].intoSubstrateType() : undefined,
-            lastName: this.data[2].isValid && this.data[2].Value ? this.data[2].intoSubstrateType() : undefined,
-            nickname: this.data[3].isValid && this.data[3].Value ? this.data[3].intoSubstrateType() : undefined,
+            ipi: this.IPI.isValid && this.IPI.Value ? this.IPI.intoSubstrateType() : undefined,
+            firstName: this.FirstName.isValid && this.FirstName.Value ? this.FirstName.intoSubstrateType() : undefined,
+            lastName: this.LastName.isValid && this.LastName.Value ? this.LastName.intoSubstrateType() : undefined,
+            nickname: this.Nickname.isValid && this.Nickname.Value ? this.Nickname.intoSubstrateType() : undefined,
         }
     }
 }

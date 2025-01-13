@@ -1,8 +1,7 @@
-import {Stakeholder} from "../../src/midds/stakeholder";
+import {Stakeholder} from '../../src';
 import {AllfeatClient, AllfeatProvider} from "../../src";
 import {Keyring} from "@polkadot/keyring";
 import {cryptoWaitReady} from "@polkadot/util-crypto";
-import * as assert from "node:assert";
 
 describe("E2E: MIDDS Stakeholder", () => {
     let stakeholder: Stakeholder

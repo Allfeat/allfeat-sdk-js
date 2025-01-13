@@ -1,8 +1,6 @@
-import {AllfeatApi, AllfeatClient, AllfeatProvider} from "../../src";
+import {AllfeatClient, AllfeatProvider} from "../../src";
 import {cryptoWaitReady} from "@polkadot/util-crypto";
 import {Keyring} from "@polkadot/keyring";
-import {PolkadotApi, SubstrateApi} from "@dedot/chaintypes";
-import {DedotClient} from "dedot";
 
 describe("E2E: AllfeatClient", () => {
     let provider: AllfeatProvider;

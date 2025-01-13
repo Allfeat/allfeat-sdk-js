@@ -1,1 +1,0 @@
-{"version":3,"file":"provider.d.ts","sourceRoot":"","sources":["../src/provider.ts"],"names":[],"mappings":"AAAA,OAAO,EAAC,UAAU,EAAC,MAAM,OAAO,CAAC;AACjC,OAAO,KAAK,EAAC,cAAc,EAAC,MAAM,YAAY,CAAC;AAO/C,qBAAa,eAAgB,SAAQ,UAAU;IAC3C;;;OAGG;gBACS,YAAY,EAAE,cAAc,GAAG,MAAM;IAYjD;;OAEG;IACH,MAAM,CAAC,oBAAoB,IAAI,cAAc,EAAE;CAGlD"}
