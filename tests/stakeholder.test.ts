@@ -1,5 +1,7 @@
 import { IMiddsString, Stakeholder } from '../src';
 import { Nickname } from '../src/midds/stakeholder';
+import { MiddsStakeholderStakeholder } from '../src/interfaces/allfeat';
+import { toHex } from 'dedot/utils';
 
 describe("Unit Tests: Stakeholder", () => {
   let stakeholder: Stakeholder;
@@ -33,5 +35,21 @@ describe("Unit Tests: Stakeholder", () => {
     expect(stakeholder.isValid).toBe(true)
     stakeholder.IPI = 123;
     expect(stakeholder.isValid).toBe(false)
+  })
+
+  it("should parse into Substrate type with success", () => {
+    stakeholder.IPI = 1234567891;
+    stakeholder.Nickname = "Alice";
+    stakeholder.FirstName = "Alice First Name";
+    stakeholder.LastName = "Alice Last Name";
+
+    const validSubstrateType: MiddsStakeholderStakeholder = {
+      ipi: 1234567891n,
+      firstName: toHex("Alice First Name"),
+      lastName: toHex("Alice Last Name"),
+      nickname: toHex("Alice"),
+    }
+
+    expect(stakeholder.parseIntoSubstrateType()).toEqual(validSubstrateType)
   })
 })

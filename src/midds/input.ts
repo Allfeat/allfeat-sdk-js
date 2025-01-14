@@ -5,7 +5,7 @@ export interface IMiddsInput<T, SubstrateType> {
   get Name(): string;
   get isValid(): boolean;
   set Value(value: T | null);
-  intoSubstrateType(): SubstrateType;
+  intoSubstrateType(): SubstrateType | undefined;
 }
 
 export interface IMiddsString extends IMiddsInput<string, `0x${string}`> {
@@ -29,7 +29,7 @@ export abstract class MiddsInput<T, SubstrateType> implements IMiddsInput<T, Sub
 
   public abstract get isValid(): boolean;
 
-  public abstract intoSubstrateType(): SubstrateType;
+  public abstract intoSubstrateType(): SubstrateType | undefined;
 }
 
 export abstract class MiddsString extends MiddsInput<string, `0x${string}`> implements IMiddsString {
@@ -48,9 +48,9 @@ export abstract class MiddsString extends MiddsInput<string, `0x${string}`> impl
 
   public get Regex(): RegExp | null { return this._regex }
 
-  public intoSubstrateType(): `0x${string}` {
+  public intoSubstrateType(): `0x${string}` | undefined {
     if (!this.Value) {
-      throw new Error(`Null value cannot be parsed to Substrate type`);
+      return undefined;
     } else {
       return toHex(this.Value)
     }
@@ -78,9 +78,21 @@ export abstract class MiddsNumber extends MiddsInput<number, bigint> {
     super(name);
   }
 
-  intoSubstrateType(): bigint {
+  intoSubstrateType(): bigint | undefined{
     if (!this.Value) {
-      throw new Error(`Null value cannot be parsed to Substrate type`);
+      return undefined;
     } else return BigInt(this.Value)
+  }
+}
+
+export abstract class MiddsNumberNonBigInt extends MiddsInput<number, number> {
+  protected constructor(name: string) {
+    super(name);
+  }
+
+  intoSubstrateType(): number | undefined{
+    if (!this.Value) {
+      return undefined;
+    } else return this.Value
   }
 }

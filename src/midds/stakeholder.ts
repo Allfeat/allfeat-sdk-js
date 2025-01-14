@@ -54,11 +54,14 @@ export class Stakeholder extends Midds<StakeholderInputs> {
     }
 
     public parseIntoSubstrateType(): MiddsStakeholderStakeholder {
+        if (!this.isValid) {
+            throw new Error("Midds data must be valid");
+        }
         return {
-            ipi: this.IPI.isValid && this.IPI.Value ? this.IPI.intoSubstrateType() : undefined,
-            firstName: this.FirstName.isValid && this.FirstName.Value ? this.FirstName.intoSubstrateType() : undefined,
-            lastName: this.LastName.isValid && this.LastName.Value ? this.LastName.intoSubstrateType() : undefined,
-            nickname: this.Nickname.isValid && this.Nickname.Value ? this.Nickname.intoSubstrateType() : undefined,
+            ipi: this.IPI.Value ? this.IPI.intoSubstrateType() : undefined,
+            firstName: this.FirstName.Value ? this.FirstName.intoSubstrateType() : undefined,
+            lastName: this.LastName.Value ? this.LastName.intoSubstrateType() : undefined,
+            nickname: this.Nickname.Value ? this.Nickname.intoSubstrateType() : undefined,
         }
     }
 }

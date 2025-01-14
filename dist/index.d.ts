@@ -8947,7 +8947,7 @@ export interface IMiddsInput<T, SubstrateType> {
 	get Name(): string;
 	get isValid(): boolean;
 	set Value(value: T | null);
-	intoSubstrateType(): SubstrateType;
+	intoSubstrateType(): SubstrateType | undefined;
 }
 export interface IMiddsString extends IMiddsInput<string, `0x${string}`> {
 	get MaxLength(): number;
@@ -8961,7 +8961,7 @@ export declare abstract class MiddsInput<T, SubstrateType> implements IMiddsInpu
 	set Value(value: T | null);
 	get Name(): string;
 	abstract get isValid(): boolean;
-	abstract intoSubstrateType(): SubstrateType;
+	abstract intoSubstrateType(): SubstrateType | undefined;
 }
 export declare abstract class MiddsString extends MiddsInput<string, `0x${string}`> implements IMiddsString {
 	private readonly _maxLength;
@@ -8970,13 +8970,17 @@ export declare abstract class MiddsString extends MiddsInput<string, `0x${string
 	get Value(): string | null;
 	get MaxLength(): number;
 	get Regex(): RegExp | null;
-	intoSubstrateType(): `0x${string}`;
+	intoSubstrateType(): `0x${string}` | undefined;
 	get isValid(): boolean;
 	set Value(value: string | null);
 }
 export declare abstract class MiddsNumber extends MiddsInput<number, bigint> {
 	protected constructor(name: string);
-	intoSubstrateType(): bigint;
+	intoSubstrateType(): bigint | undefined;
+}
+export declare abstract class MiddsNumberNonBigInt extends MiddsInput<number, number> {
+	protected constructor(name: string);
+	intoSubstrateType(): number | undefined;
 }
 export declare abstract class Midds<T extends Record<string, IMiddsInput<any, any>>> implements IMidds<T> {
 	private readonly _palletName;
@@ -9034,18 +9038,80 @@ export declare class Stakeholder extends Midds<StakeholderInputs> {
 	get Nickname(): Nickname;
 	parseIntoSubstrateType(): MiddsStakeholderStakeholder;
 }
-declare class IPINameNumber extends MiddsNumber {
+export declare class IPINameNumber extends MiddsNumber {
 	constructor();
 	get isValid(): boolean;
 }
-declare class FirstName extends MiddsString {
+export declare class FirstName extends MiddsString {
 	constructor();
 }
-declare class LastName extends MiddsString {
+export declare class LastName extends MiddsString {
 	constructor();
 }
-declare class Nickname extends MiddsString {
+export declare class Nickname extends MiddsString {
 	constructor();
+}
+export interface SongInput {
+	[key: string]: IMiddsInput<any, any>;
+	iswc: ISWC;
+	title: SongTitle;
+	duration: SongDuration;
+	songType: SongType;
+	shares: Shares;
+}
+export declare class Song extends Midds<SongInput> {
+	constructor();
+	get ISWC(): ISWC;
+	get Title(): SongTitle;
+	get Duration(): SongDuration;
+	get SongType(): SongType;
+	get Shares(): Shares;
+	set ISWC(iswc: ISWCValue);
+	set Title(title: string);
+	set Duration(duration: number);
+	set SongType(songType: AllfeatSupportSongType);
+	set Shares(shares: IShare[]);
+	parseIntoSubstrateType(): MiddsSongSong;
+}
+export interface ISWCValue {
+	group1: number;
+	group2: number;
+	group3: number;
+	checkDigit: number;
+}
+export declare class ISWC extends MiddsInput<ISWCValue, AllfeatSupportIswc> {
+	constructor();
+	get isValid(): boolean;
+	intoSubstrateType(): AllfeatSupportIswc | undefined;
+}
+export declare class SongTitle extends MiddsString {
+	constructor();
+}
+export declare class SongDuration extends MiddsNumberNonBigInt {
+	constructor();
+	get isValid(): boolean;
+}
+export declare class SongType extends MiddsInput<AllfeatSupportSongType, AllfeatSupportSongType> {
+	constructor();
+	get isValid(): boolean;
+	intoSubstrateType(): AllfeatSupportSongType | undefined;
+}
+export interface IShareInfo {
+	role: MiddsSongRole;
+	performanceShare: number;
+	mechanicalShare: number;
+}
+export interface IShare {
+	stakeholderId: string;
+	shareInfo: IShareInfo;
+}
+export declare class Shares extends MiddsInput<IShare[], MiddsSongShare[]> {
+	value: IShare[];
+	constructor();
+	get Value(): IShare[];
+	set Value(value: IShare[]);
+	get isValid(): boolean;
+	intoSubstrateType(): MiddsSongShare[] | undefined;
 }
 
 export {};
