@@ -3,7 +3,7 @@
 import { KeyringPair } from '@polkadot/keyring/types';
 import { IKeyringPair, Signer } from '@polkadot/types/types';
 import { DedotClient, WsProvider } from 'dedot';
-import { AccountId32, AccountId32Like, ApplyExtrinsicResult, AuthorityList, BabeConfiguration, BabeEpoch, BabeEquivocationProof, Balance, Block, BlockHash, Bytes, BytesLike, CheckInherentsResult, Data, Digest, DispatchError, DispatchInfo, Extrinsic, FeeDetails, FixedBytes, FixedU128, GrandpaEquivocationProof, H256, Header, InherentData, KeyTypeId, MultiAddressLike, Nonce, OpaqueExtrinsic, OpaqueExtrinsicLike, OpaqueKeyOwnershipProof, OpaqueMetadata, Option, Percent, Phase, RawBytesLike, Result, RuntimeDispatchInfo, RuntimeVersion, SetId, Slot, Text, TransactionSource, TransactionValidity, Weight } from 'dedot/codecs';
+import { AccountId32, AccountId32Like, Bytes, BytesLike, Data, Digest, DispatchError, Extrinsic, FixedBytes, FixedU128, H256, Header, MultiAddressLike, Percent, Phase, Result, RuntimeVersion, UncheckedExtrinsic, UncheckedExtrinsicLike } from 'dedot/codecs';
 import { Callback, GenericChainConsts, GenericChainErrors, GenericChainEvents, GenericChainStorage, GenericChainTx, GenericJsonRpcApis, GenericPalletError, GenericPalletEvent, GenericRuntimeApiMethod, GenericRuntimeApis, GenericStorageQuery, GenericSubstrateApi, GenericTxCall, IRuntimeTxCall, ISubmittableExtrinsic, ISubmittableExtrinsicLegacy, ISubmittableResult, RpcLegacy, RpcV2, RpcVersion } from 'dedot/types';
 import { JsonRpcApis } from 'dedot/types/json-rpc';
 
@@ -39,11 +39,14 @@ export type MelodieRuntimeRuntimeEvent = {
 	pallet: "System";
 	palletEvent: FrameSystemEvent;
 } | {
+	pallet: "Utility";
+	palletEvent: PalletUtilityEvent;
+} | {
 	pallet: "Balances";
 	palletEvent: PalletBalancesEvent;
 } | {
-	pallet: "ImOnline";
-	palletEvent: PalletImOnlineEvent;
+	pallet: "TransactionPayment";
+	palletEvent: PalletTransactionPaymentEvent;
 } | {
 	pallet: "ValidatorSet";
 	palletEvent: SubstrateValidatorSetEvent;
@@ -54,8 +57,11 @@ export type MelodieRuntimeRuntimeEvent = {
 	pallet: "Grandpa";
 	palletEvent: PalletGrandpaEvent;
 } | {
-	pallet: "Utility";
-	palletEvent: PalletUtilityEvent;
+	pallet: "Sudo";
+	palletEvent: PalletSudoEvent;
+} | {
+	pallet: "ImOnline";
+	palletEvent: PalletImOnlineEvent;
 } | {
 	pallet: "Identity";
 	palletEvent: PalletIdentityEvent;
@@ -63,8 +69,8 @@ export type MelodieRuntimeRuntimeEvent = {
 	pallet: "Scheduler";
 	palletEvent: PalletSchedulerEvent;
 } | {
-	pallet: "Sudo";
-	palletEvent: PalletSudoEvent;
+	pallet: "Preimage";
+	palletEvent: PalletPreimageEvent;
 } | {
 	pallet: "Proxy";
 	palletEvent: PalletProxyEvent;
@@ -72,11 +78,8 @@ export type MelodieRuntimeRuntimeEvent = {
 	pallet: "Multisig";
 	palletEvent: PalletMultisigEvent;
 } | {
-	pallet: "TransactionPayment";
-	palletEvent: PalletTransactionPaymentEvent;
-} | {
-	pallet: "Preimage";
-	palletEvent: PalletPreimageEvent;
+	pallet: "SafeMode";
+	palletEvent: PalletSafeModeEvent;
 } | {
 	pallet: "Stakeholders";
 	palletEvent: PalletMiddsEvent;
@@ -94,7 +97,7 @@ export type FrameSystemEvent =
 {
 	name: "ExtrinsicSuccess";
 	data: {
-		dispatchInfo: DispatchInfo;
+		dispatchInfo: FrameSystemDispatchEventInfo;
 	};
 }
 /**
@@ -104,7 +107,7 @@ export type FrameSystemEvent =
 	name: "ExtrinsicFailed";
 	data: {
 		dispatchError: DispatchError;
-		dispatchInfo: DispatchInfo;
+		dispatchInfo: FrameSystemDispatchEventInfo;
 	};
 }
 /**
@@ -179,7 +182,66 @@ export type FrameSystemEvent =
 		checkVersion: boolean;
 	};
 };
+export type FrameSystemDispatchEventInfo = {
+	weight: SpWeightsWeightV2Weight;
+	class: FrameSupportDispatchDispatchClass;
+	paysFee: FrameSupportDispatchPays;
+};
+export type FrameSupportDispatchDispatchClass = "Normal" | "Operational" | "Mandatory";
+export type FrameSupportDispatchPays = "Yes" | "No";
 export type MelodieRuntimeRuntimeTask = null;
+/**
+ * The `Event` enum of this pallet
+ **/
+export type PalletUtilityEvent = 
+/**
+ * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
+ * well as the error.
+ **/
+{
+	name: "BatchInterrupted";
+	data: {
+		index: number;
+		error: DispatchError;
+	};
+}
+/**
+ * Batch of dispatches completed fully with no error.
+ **/
+ | {
+	name: "BatchCompleted";
+}
+/**
+ * Batch of dispatches completed but has errors.
+ **/
+ | {
+	name: "BatchCompletedWithErrors";
+}
+/**
+ * A single item within a Batch of dispatches has completed with no error.
+ **/
+ | {
+	name: "ItemCompleted";
+}
+/**
+ * A single item within a Batch of dispatches has completed with error.
+ **/
+ | {
+	name: "ItemFailed";
+	data: {
+		error: DispatchError;
+	};
+}
+/**
+ * A call was dispatched.
+ **/
+ | {
+	name: "DispatchedAs";
+	data: {
+		result: Result<[
+		], DispatchError>;
+	};
+};
 /**
  * The `Event` enum of this pallet
  **/
@@ -410,35 +472,19 @@ export type FrameSupportTokensMiscBalanceStatus = "Free" | "Reserved";
 /**
  * The `Event` enum of this pallet
  **/
-export type PalletImOnlineEvent = 
+export type PalletTransactionPaymentEvent = 
 /**
- * A new heartbeat was received from `AuthorityId`.
+ * A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
+ * has been paid by `who`.
  **/
 {
-	name: "HeartbeatReceived";
+	name: "TransactionFeePaid";
 	data: {
-		authorityId: PalletImOnlineSr25519AppSr25519Public;
-	};
-}
-/**
- * At the end of the session, no offence was committed.
- **/
- | {
-	name: "AllGood";
-}
-/**
- * At the end of the session, at least one validator was found to be offline.
- **/
- | {
-	name: "SomeOffline";
-	data: {
-		offline: Array<[
-			AccountId32,
-			AccountId32
-		]>;
+		who: AccountId32;
+		actualFee: bigint;
+		tip: bigint;
 	};
 };
-export type PalletImOnlineSr25519AppSr25519Public = FixedBytes<32>;
 /**
  * The `Event` enum of this pallet
  **/
@@ -503,55 +549,87 @@ export type SpConsensusGrandpaAppPublic = FixedBytes<32>;
 /**
  * The `Event` enum of this pallet
  **/
-export type PalletUtilityEvent = 
+export type PalletSudoEvent = 
 /**
- * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
- * well as the error.
+ * A sudo call just took place.
  **/
 {
-	name: "BatchInterrupted";
+	name: "Sudid";
 	data: {
-		index: number;
-		error: DispatchError;
+		/**
+		 * The result of the call made by the sudo user.
+		 **/
+		sudoResult: Result<[
+		], DispatchError>;
 	};
 }
 /**
- * Batch of dispatches completed fully with no error.
+ * The sudo key has been updated.
  **/
  | {
-	name: "BatchCompleted";
-}
-/**
- * Batch of dispatches completed but has errors.
- **/
- | {
-	name: "BatchCompletedWithErrors";
-}
-/**
- * A single item within a Batch of dispatches has completed with no error.
- **/
- | {
-	name: "ItemCompleted";
-}
-/**
- * A single item within a Batch of dispatches has completed with error.
- **/
- | {
-	name: "ItemFailed";
+	name: "KeyChanged";
 	data: {
-		error: DispatchError;
+		/**
+		 * The old sudo key (if one was previously set).
+		 **/
+		old?: AccountId32 | undefined;
+		/**
+		 * The new sudo key (if one was set).
+		 **/
+		new: AccountId32;
 	};
 }
 /**
- * A call was dispatched.
+ * The key was permanently removed.
  **/
  | {
-	name: "DispatchedAs";
+	name: "KeyRemoved";
+}
+/**
+ * A [sudo_as](Pallet::sudo_as) call just took place.
+ **/
+ | {
+	name: "SudoAsDone";
 	data: {
-		result: Result<[
+		/**
+		 * The result of the call made by the sudo user.
+		 **/
+		sudoResult: Result<[
 		], DispatchError>;
 	};
 };
+/**
+ * The `Event` enum of this pallet
+ **/
+export type PalletImOnlineEvent = 
+/**
+ * A new heartbeat was received from `AuthorityId`.
+ **/
+{
+	name: "HeartbeatReceived";
+	data: {
+		authorityId: PalletImOnlineSr25519AppSr25519Public;
+	};
+}
+/**
+ * At the end of the session, no offence was committed.
+ **/
+ | {
+	name: "AllGood";
+}
+/**
+ * At the end of the session, at least one validator was found to be offline.
+ **/
+ | {
+	name: "SomeOffline";
+	data: {
+		offline: Array<[
+			AccountId32,
+			AccountId32
+		]>;
+	};
+};
+export type PalletImOnlineSr25519AppSr25519Public = FixedBytes<32>;
 /**
  * The `Event` enum of this pallet
  **/
@@ -633,6 +711,27 @@ export type PalletIdentityEvent =
 		sub: AccountId32;
 		main: AccountId32;
 		deposit: bigint;
+	};
+}
+/**
+ * An account's sub-identities were set (in bulk).
+ **/
+ | {
+	name: "SubIdentitiesSet";
+	data: {
+		main: AccountId32;
+		numberOfSubs: number;
+		newDeposit: bigint;
+	};
+}
+/**
+ * A given sub-account's associated name was changed by its super-identity.
+ **/
+ | {
+	name: "SubIdentityRenamed";
+	data: {
+		sub: AccountId32;
+		main: AccountId32;
 	};
 }
 /**
@@ -724,6 +823,33 @@ export type PalletIdentityEvent =
 	name: "DanglingUsernameRemoved";
 	data: {
 		who: AccountId32;
+		username: Bytes;
+	};
+}
+/**
+ * A username has been unbound.
+ **/
+ | {
+	name: "UsernameUnbound";
+	data: {
+		username: Bytes;
+	};
+}
+/**
+ * A username has been removed.
+ **/
+ | {
+	name: "UsernameRemoved";
+	data: {
+		username: Bytes;
+	};
+}
+/**
+ * A username has been killed.
+ **/
+ | {
+	name: "UsernameKilled";
+	data: {
 		username: Bytes;
 	};
 };
@@ -850,53 +976,32 @@ export type PalletSchedulerEvent =
 /**
  * The `Event` enum of this pallet
  **/
-export type PalletSudoEvent = 
+export type PalletPreimageEvent = 
 /**
- * A sudo call just took place.
+ * A preimage has been noted.
  **/
 {
-	name: "Sudid";
+	name: "Noted";
 	data: {
-		/**
-		 * The result of the call made by the sudo user.
-		 **/
-		sudoResult: Result<[
-		], DispatchError>;
+		hash: H256;
 	};
 }
 /**
- * The sudo key has been updated.
+ * A preimage has been requested.
  **/
  | {
-	name: "KeyChanged";
+	name: "Requested";
 	data: {
-		/**
-		 * The old sudo key (if one was previously set).
-		 **/
-		old?: AccountId32 | undefined;
-		/**
-		 * The new sudo key (if one was set).
-		 **/
-		new: AccountId32;
+		hash: H256;
 	};
 }
 /**
- * The key was permanently removed.
+ * A preimage has ben cleared.
  **/
  | {
-	name: "KeyRemoved";
-}
-/**
- * A [sudo_as](Pallet::sudo_as) call just took place.
- **/
- | {
-	name: "SudoAsDone";
+	name: "Cleared";
 	data: {
-		/**
-		 * The result of the call made by the sudo user.
-		 **/
-		sudoResult: Result<[
-		], DispatchError>;
+		hash: H256;
 	};
 };
 /**
@@ -1022,50 +1127,81 @@ export type PalletMultisigTimepoint = {
 /**
  * The `Event` enum of this pallet
  **/
-export type PalletTransactionPaymentEvent = 
+export type PalletSafeModeEvent = 
 /**
- * A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
- * has been paid by `who`.
+ * The safe-mode was entered until inclusively this block.
  **/
 {
-	name: "TransactionFeePaid";
+	name: "Entered";
 	data: {
-		who: AccountId32;
-		actualFee: bigint;
-		tip: bigint;
-	};
-};
-/**
- * The `Event` enum of this pallet
- **/
-export type PalletPreimageEvent = 
-/**
- * A preimage has been noted.
- **/
-{
-	name: "Noted";
-	data: {
-		hash: H256;
+		until: number;
 	};
 }
 /**
- * A preimage has been requested.
+ * The safe-mode was extended until inclusively this block.
  **/
  | {
-	name: "Requested";
+	name: "Extended";
 	data: {
-		hash: H256;
+		until: number;
 	};
 }
 /**
- * A preimage has ben cleared.
+ * Exited the safe-mode for a specific reason.
  **/
  | {
-	name: "Cleared";
+	name: "Exited";
 	data: {
-		hash: H256;
+		reason: PalletSafeModeExitReason;
 	};
+}
+/**
+ * An account reserved funds for either entering or extending the safe-mode.
+ **/
+ | {
+	name: "DepositPlaced";
+	data: {
+		account: AccountId32;
+		amount: bigint;
+	};
+}
+/**
+ * An account had a reserve released that was reserved.
+ **/
+ | {
+	name: "DepositReleased";
+	data: {
+		account: AccountId32;
+		amount: bigint;
+	};
+}
+/**
+ * An account had reserve slashed that was reserved.
+ **/
+ | {
+	name: "DepositSlashed";
+	data: {
+		account: AccountId32;
+		amount: bigint;
+	};
+}
+/**
+ * Could not hold funds for entering or extending the safe-mode.
+ *
+ * This error comes from the underlying `Currency`.
+ **/
+ | {
+	name: "CannotDeposit";
+}
+/**
+ * Could not release funds for entering or extending the safe-mode.
+ *
+ * This error comes from the underlying `Currency`.
+ **/
+ | {
+	name: "CannotRelease";
 };
+export type PalletSafeModeExitReason = "Timeout" | "Force";
 /**
  * The `Event` enum of this pallet
  **/
@@ -1258,37 +1394,277 @@ export type SpWeightsRuntimeDbWeight = {
 	read: bigint;
 	write: bigint;
 };
-export type PalletBalancesBalanceLock = {
-	id: FixedBytes<8>;
-	amount: bigint;
-	reasons: PalletBalancesReasons;
+export type PalletUtilityCallLike = 
+/**
+ * Send a batch of dispatch calls.
+ *
+ * May be called from any origin except `None`.
+ *
+ * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+ * exceed the constant: `batched_calls_limit` (available in constant metadata).
+ *
+ * If origin is root then the calls are dispatched without checking origin filter. (This
+ * includes bypassing `frame_system::Config::BaseCallFilter`).
+ *
+ * ## Complexity
+ * - O(C) where C is the number of calls to be batched.
+ *
+ * This will return `Ok` in all circumstances. To determine the success of the batch, an
+ * event is deposited. If a call failed and the batch was interrupted, then the
+ * `BatchInterrupted` event is deposited, along with the number of successful calls made
+ * and the error of the failed call. If all were successful, then the `BatchCompleted`
+ * event is deposited.
+ **/
+{
+	name: "Batch";
+	params: {
+		calls: Array<MelodieRuntimeRuntimeCallLike>;
+	};
+}
+/**
+ * Send a call through an indexed pseudonym of the sender.
+ *
+ * Filter from origin are passed along. The call will be dispatched with an origin which
+ * use the same filter as the origin of this call.
+ *
+ * NOTE: If you need to ensure that any account-based filtering is not honored (i.e.
+ * because you expect `proxy` to have been used prior in the call stack and you do not want
+ * the call restrictions to apply to any sub-accounts), then use `as_multi_threshold_1`
+ * in the Multisig pallet instead.
+ *
+ * NOTE: Prior to version *12, this was called `as_limited_sub`.
+ *
+ * The dispatch origin for this call must be _Signed_.
+ **/
+ | {
+	name: "AsDerivative";
+	params: {
+		index: number;
+		call: MelodieRuntimeRuntimeCallLike;
+	};
+}
+/**
+ * Send a batch of dispatch calls and atomically execute them.
+ * The whole transaction will rollback and fail if any of the calls failed.
+ *
+ * May be called from any origin except `None`.
+ *
+ * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+ * exceed the constant: `batched_calls_limit` (available in constant metadata).
+ *
+ * If origin is root then the calls are dispatched without checking origin filter. (This
+ * includes bypassing `frame_system::Config::BaseCallFilter`).
+ *
+ * ## Complexity
+ * - O(C) where C is the number of calls to be batched.
+ **/
+ | {
+	name: "BatchAll";
+	params: {
+		calls: Array<MelodieRuntimeRuntimeCallLike>;
+	};
+}
+/**
+ * Dispatches a function call with a provided origin.
+ *
+ * The dispatch origin for this call must be _Root_.
+ *
+ * ## Complexity
+ * - O(1).
+ **/
+ | {
+	name: "DispatchAs";
+	params: {
+		asOrigin: MelodieRuntimeOriginCaller;
+		call: MelodieRuntimeRuntimeCallLike;
+	};
+}
+/**
+ * Send a batch of dispatch calls.
+ * Unlike `batch`, it allows errors and won't interrupt.
+ *
+ * May be called from any origin except `None`.
+ *
+ * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+ * exceed the constant: `batched_calls_limit` (available in constant metadata).
+ *
+ * If origin is root then the calls are dispatch without checking origin filter. (This
+ * includes bypassing `frame_system::Config::BaseCallFilter`).
+ *
+ * ## Complexity
+ * - O(C) where C is the number of calls to be batched.
+ **/
+ | {
+	name: "ForceBatch";
+	params: {
+		calls: Array<MelodieRuntimeRuntimeCallLike>;
+	};
+}
+/**
+ * Dispatch a function call with a specified weight.
+ *
+ * This function does not check the weight of the call, and instead allows the
+ * Root origin to specify the weight of the call.
+ *
+ * The dispatch origin for this call must be _Root_.
+ **/
+ | {
+	name: "WithWeight";
+	params: {
+		call: MelodieRuntimeRuntimeCallLike;
+		weight: SpWeightsWeightV2Weight;
+	};
 };
-export type PalletBalancesReasons = "Fee" | "Misc" | "All";
-export type PalletBalancesReserveData = {
-	id: FixedBytes<8>;
-	amount: bigint;
-};
-export type FrameSupportTokensMiscIdAmount = {
-	id: MelodieRuntimeRuntimeHoldReason;
-	amount: bigint;
-};
-export type MelodieRuntimeRuntimeHoldReason = {
-	type: "Preimage";
-	value: PalletPreimageHoldReason;
+export type MelodieRuntimeRuntimeCallLike = {
+	pallet: "System";
+	palletCall: FrameSystemCallLike;
 } | {
-	type: "Stakeholders";
-	value: PalletMiddsHoldReason;
+	pallet: "Utility";
+	palletCall: PalletUtilityCallLike;
 } | {
-	type: "MusicalWorks";
-	value: PalletMiddsHoldReason;
+	pallet: "Babe";
+	palletCall: PalletBabeCallLike;
+} | {
+	pallet: "Timestamp";
+	palletCall: PalletTimestampCallLike;
+} | {
+	pallet: "Balances";
+	palletCall: PalletBalancesCallLike;
+} | {
+	pallet: "ValidatorSet";
+	palletCall: SubstrateValidatorSetCallLike;
+} | {
+	pallet: "Session";
+	palletCall: PalletSessionCallLike;
+} | {
+	pallet: "Grandpa";
+	palletCall: PalletGrandpaCallLike;
+} | {
+	pallet: "Sudo";
+	palletCall: PalletSudoCallLike;
+} | {
+	pallet: "ImOnline";
+	palletCall: PalletImOnlineCallLike;
+} | {
+	pallet: "Identity";
+	palletCall: PalletIdentityCallLike;
+} | {
+	pallet: "Scheduler";
+	palletCall: PalletSchedulerCallLike;
+} | {
+	pallet: "Preimage";
+	palletCall: PalletPreimageCallLike;
+} | {
+	pallet: "Proxy";
+	palletCall: PalletProxyCallLike;
+} | {
+	pallet: "Multisig";
+	palletCall: PalletMultisigCallLike;
+} | {
+	pallet: "SafeMode";
+	palletCall: PalletSafeModeCallLike;
+} | {
+	pallet: "Stakeholders";
+	palletCall: PalletMiddsCallLike;
+} | {
+	pallet: "MusicalWorks";
+	palletCall: PalletMiddsCallLike002;
 };
-export type PalletPreimageHoldReason = "Preimage";
-export type PalletMiddsHoldReason = "MiddsRegistration";
-export type FrameSupportTokensMiscIdAmountRuntimeFreezeReason = {
-	id: MelodieRuntimeRuntimeFreezeReason;
-	amount: bigint;
+export type PalletBabeCallLike = 
+/**
+ * Report authority equivocation/misbehavior. This method will verify
+ * the equivocation proof and validate the given key ownership proof
+ * against the extracted offender. If both are valid, the offence will
+ * be reported.
+ **/
+{
+	name: "ReportEquivocation";
+	params: {
+		equivocationProof: SpConsensusSlotsEquivocationProof;
+		keyOwnerProof: SpSessionMembershipProof;
+	};
+}
+/**
+ * Report authority equivocation/misbehavior. This method will verify
+ * the equivocation proof and validate the given key ownership proof
+ * against the extracted offender. If both are valid, the offence will
+ * be reported.
+ * This extrinsic must be called unsigned and it is expected that only
+ * block authors will call it (validated in `ValidateUnsigned`), as such
+ * if the block author is defined it will be defined as the equivocation
+ * reporter.
+ **/
+ | {
+	name: "ReportEquivocationUnsigned";
+	params: {
+		equivocationProof: SpConsensusSlotsEquivocationProof;
+		keyOwnerProof: SpSessionMembershipProof;
+	};
+}
+/**
+ * Plan an epoch config change. The epoch config change is recorded and will be enacted on
+ * the next call to `enact_epoch_change`. The config will be activated one epoch after.
+ * Multiple calls to this method will replace any existing planned config change that had
+ * not been enacted yet.
+ **/
+ | {
+	name: "PlanConfigChange";
+	params: {
+		config: SpConsensusBabeDigestsNextConfigDescriptor;
+	};
 };
-export type MelodieRuntimeRuntimeFreezeReason = null;
+export type SpConsensusSlotsEquivocationProof = {
+	offender: SpConsensusBabeAppPublic;
+	slot: SpConsensusSlotsSlot;
+	firstHeader: Header;
+	secondHeader: Header;
+};
+export type SpConsensusBabeAppPublic = FixedBytes<32>;
+export type SpConsensusSlotsSlot = bigint;
+export type SpSessionMembershipProof = {
+	session: number;
+	trieNodes: Array<Bytes>;
+	validatorCount: number;
+};
+export type SpConsensusBabeDigestsNextConfigDescriptor = {
+	type: "V1";
+	value: {
+		c: [
+			bigint,
+			bigint
+		];
+		allowedSlots: SpConsensusBabeAllowedSlots;
+	};
+};
+export type SpConsensusBabeAllowedSlots = "PrimarySlots" | "PrimaryAndSecondaryPlainSlots" | "PrimaryAndSecondaryVRFSlots";
+export type PalletTimestampCallLike = 
+/**
+ * Set the current time.
+ *
+ * This call should be invoked exactly once per block. It will panic at the finalization
+ * phase, if this call hasn't been invoked by that time.
+ *
+ * The timestamp should be greater than the previous one by the amount specified by
+ * [`Config::MinimumPeriod`].
+ *
+ * The dispatch origin for this call must be _None_.
+ *
+ * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
+ * that changing the complexity of this call could result exhausting the resources in a
+ * block to execute any other calls.
+ *
+ * ## Complexity
+ * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
+ * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
+ * `on_finalize`)
+ * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
+ **/
+{
+	name: "Set";
+	params: {
+		now: bigint;
+	};
+};
 export type PalletBalancesCallLike = 
 /**
  * Transfer some liquid free balance to another account.
@@ -1428,156 +1804,6 @@ export type PalletBalancesCallLike =
 	};
 };
 export type PalletBalancesAdjustmentDirection = "Increase" | "Decrease";
-export type SpConsensusBabeAppPublic = FixedBytes<32>;
-export type SpConsensusSlotsSlot = bigint;
-export type SpConsensusBabeDigestsNextConfigDescriptor = {
-	type: "V1";
-	value: {
-		c: [
-			bigint,
-			bigint
-		];
-		allowedSlots: SpConsensusBabeAllowedSlots;
-	};
-};
-export type SpConsensusBabeAllowedSlots = "PrimarySlots" | "PrimaryAndSecondaryPlainSlots" | "PrimaryAndSecondaryVRFSlots";
-export type SpConsensusBabeDigestsPreDigest = {
-	type: "Primary";
-	value: SpConsensusBabeDigestsPrimaryPreDigest;
-} | {
-	type: "SecondaryPlain";
-	value: SpConsensusBabeDigestsSecondaryPlainPreDigest;
-} | {
-	type: "SecondaryVRF";
-	value: SpConsensusBabeDigestsSecondaryVRFPreDigest;
-};
-export type SpConsensusBabeDigestsPrimaryPreDigest = {
-	authorityIndex: number;
-	slot: SpConsensusSlotsSlot;
-	vrfSignature: SpCoreSr25519VrfVrfSignature;
-};
-export type SpCoreSr25519VrfVrfSignature = {
-	preOutput: FixedBytes<32>;
-	proof: FixedBytes<64>;
-};
-export type SpConsensusBabeDigestsSecondaryPlainPreDigest = {
-	authorityIndex: number;
-	slot: SpConsensusSlotsSlot;
-};
-export type SpConsensusBabeDigestsSecondaryVRFPreDigest = {
-	authorityIndex: number;
-	slot: SpConsensusSlotsSlot;
-	vrfSignature: SpCoreSr25519VrfVrfSignature;
-};
-export type SpConsensusBabeBabeEpochConfiguration = {
-	c: [
-		bigint,
-		bigint
-	];
-	allowedSlots: SpConsensusBabeAllowedSlots;
-};
-export type PalletBabeCallLike = 
-/**
- * Report authority equivocation/misbehavior. This method will verify
- * the equivocation proof and validate the given key ownership proof
- * against the extracted offender. If both are valid, the offence will
- * be reported.
- **/
-{
-	name: "ReportEquivocation";
-	params: {
-		equivocationProof: SpConsensusSlotsEquivocationProof;
-		keyOwnerProof: SpSessionMembershipProof;
-	};
-}
-/**
- * Report authority equivocation/misbehavior. This method will verify
- * the equivocation proof and validate the given key ownership proof
- * against the extracted offender. If both are valid, the offence will
- * be reported.
- * This extrinsic must be called unsigned and it is expected that only
- * block authors will call it (validated in `ValidateUnsigned`), as such
- * if the block author is defined it will be defined as the equivocation
- * reporter.
- **/
- | {
-	name: "ReportEquivocationUnsigned";
-	params: {
-		equivocationProof: SpConsensusSlotsEquivocationProof;
-		keyOwnerProof: SpSessionMembershipProof;
-	};
-}
-/**
- * Plan an epoch config change. The epoch config change is recorded and will be enacted on
- * the next call to `enact_epoch_change`. The config will be activated one epoch after.
- * Multiple calls to this method will replace any existing planned config change that had
- * not been enacted yet.
- **/
- | {
-	name: "PlanConfigChange";
-	params: {
-		config: SpConsensusBabeDigestsNextConfigDescriptor;
-	};
-};
-export type SpConsensusSlotsEquivocationProof = {
-	offender: SpConsensusBabeAppPublic;
-	slot: SpConsensusSlotsSlot;
-	firstHeader: Header;
-	secondHeader: Header;
-};
-export type SpSessionMembershipProof = {
-	session: number;
-	trieNodes: Array<Bytes>;
-	validatorCount: number;
-};
-export type PalletTimestampCallLike = 
-/**
- * Set the current time.
- *
- * This call should be invoked exactly once per block. It will panic at the finalization
- * phase, if this call hasn't been invoked by that time.
- *
- * The timestamp should be greater than the previous one by the amount specified by
- * [`Config::MinimumPeriod`].
- *
- * The dispatch origin for this call must be _None_.
- *
- * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
- * that changing the complexity of this call could result exhausting the resources in a
- * block to execute any other calls.
- *
- * ## Complexity
- * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
- * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
- * `on_finalize`)
- * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
- **/
-{
-	name: "Set";
-	params: {
-		now: bigint;
-	};
-};
-export type PalletImOnlineCallLike = 
-/**
- * ## Complexity:
- * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
- * - `O(K)`: decoding of length `K`
- **/
-{
-	name: "Heartbeat";
-	params: {
-		heartbeat: PalletImOnlineHeartbeat;
-		signature: PalletImOnlineSr25519AppSr25519Signature;
-	};
-};
-export type PalletImOnlineHeartbeat = {
-	blockNumber: number;
-	sessionIndex: number;
-	authorityIndex: number;
-	validatorsLen: number;
-};
-export type PalletImOnlineSr25519AppSr25519Signature = FixedBytes<64>;
 export type SubstrateValidatorSetCallLike = 
 /**
  * Add a new validator.
@@ -1606,14 +1832,6 @@ export type SubstrateValidatorSetCallLike =
 		validatorId: AccountId32Like;
 	};
 };
-export type MelodieRuntimePalletsSessionSessionKeys = {
-	grandpa: SpConsensusGrandpaAppPublic;
-	babe: SpConsensusBabeAppPublic;
-	imOnline: PalletImOnlineSr25519AppSr25519Public;
-	authorityDiscovery: SpAuthorityDiscoveryAppPublic;
-};
-export type SpAuthorityDiscoveryAppPublic = FixedBytes<32>;
-export type SpCoreCryptoKeyTypeId = FixedBytes<4>;
 export type PalletSessionCallLike = 
 /**
  * Sets the session key(s) of the function caller to `keys`.
@@ -1650,32 +1868,13 @@ export type PalletSessionCallLike =
  | {
 	name: "PurgeKeys";
 };
-export type PalletGrandpaStoredState = {
-	type: "Live";
-} | {
-	type: "PendingPause";
-	value: {
-		scheduledAt: number;
-		delay: number;
-	};
-} | {
-	type: "Paused";
-} | {
-	type: "PendingResume";
-	value: {
-		scheduledAt: number;
-		delay: number;
-	};
+export type MelodieRuntimePalletsSessionSessionKeys = {
+	grandpa: SpConsensusGrandpaAppPublic;
+	babe: SpConsensusBabeAppPublic;
+	imOnline: PalletImOnlineSr25519AppSr25519Public;
+	authorityDiscovery: SpAuthorityDiscoveryAppPublic;
 };
-export type PalletGrandpaStoredPendingChange = {
-	scheduledAt: number;
-	delay: number;
-	nextAuthorities: Array<[
-		SpConsensusGrandpaAppPublic,
-		bigint
-	]>;
-	forced?: number | undefined;
-};
+export type SpAuthorityDiscoveryAppPublic = FixedBytes<32>;
 export type PalletGrandpaCallLike = 
 /**
  * Report voter equivocation/misbehavior. This method will verify the
@@ -1773,179 +1972,81 @@ export type FinalityGrandpaPrecommit = {
 	targetHash: H256;
 	targetNumber: number;
 };
-export type PalletUtilityCallLike = 
+export type PalletSudoCallLike = 
 /**
- * Send a batch of dispatch calls.
- *
- * May be called from any origin except `None`.
- *
- * - `calls`: The calls to be dispatched from the same origin. The number of call must not
- * exceed the constant: `batched_calls_limit` (available in constant metadata).
- *
- * If origin is root then the calls are dispatched without checking origin filter. (This
- * includes bypassing `frame_system::Config::BaseCallFilter`).
- *
- * ## Complexity
- * - O(C) where C is the number of calls to be batched.
- *
- * This will return `Ok` in all circumstances. To determine the success of the batch, an
- * event is deposited. If a call failed and the batch was interrupted, then the
- * `BatchInterrupted` event is deposited, along with the number of successful calls made
- * and the error of the failed call. If all were successful, then the `BatchCompleted`
- * event is deposited.
+ * Authenticates the sudo key and dispatches a function call with `Root` origin.
  **/
 {
-	name: "Batch";
+	name: "Sudo";
 	params: {
-		calls: Array<MelodieRuntimeRuntimeCallLike>;
+		call: MelodieRuntimeRuntimeCallLike;
 	};
 }
 /**
- * Send a call through an indexed pseudonym of the sender.
- *
- * Filter from origin are passed along. The call will be dispatched with an origin which
- * use the same filter as the origin of this call.
- *
- * NOTE: If you need to ensure that any account-based filtering is not honored (i.e.
- * because you expect `proxy` to have been used prior in the call stack and you do not want
- * the call restrictions to apply to any sub-accounts), then use `as_multi_threshold_1`
- * in the Multisig pallet instead.
- *
- * NOTE: Prior to version *12, this was called `as_limited_sub`.
+ * Authenticates the sudo key and dispatches a function call with `Root` origin.
+ * This function does not check the weight of the call, and instead allows the
+ * Sudo user to specify the weight of the call.
  *
  * The dispatch origin for this call must be _Signed_.
  **/
  | {
-	name: "AsDerivative";
-	params: {
-		index: number;
-		call: MelodieRuntimeRuntimeCallLike;
-	};
-}
-/**
- * Send a batch of dispatch calls and atomically execute them.
- * The whole transaction will rollback and fail if any of the calls failed.
- *
- * May be called from any origin except `None`.
- *
- * - `calls`: The calls to be dispatched from the same origin. The number of call must not
- * exceed the constant: `batched_calls_limit` (available in constant metadata).
- *
- * If origin is root then the calls are dispatched without checking origin filter. (This
- * includes bypassing `frame_system::Config::BaseCallFilter`).
- *
- * ## Complexity
- * - O(C) where C is the number of calls to be batched.
- **/
- | {
-	name: "BatchAll";
-	params: {
-		calls: Array<MelodieRuntimeRuntimeCallLike>;
-	};
-}
-/**
- * Dispatches a function call with a provided origin.
- *
- * The dispatch origin for this call must be _Root_.
- *
- * ## Complexity
- * - O(1).
- **/
- | {
-	name: "DispatchAs";
-	params: {
-		asOrigin: MelodieRuntimeOriginCaller;
-		call: MelodieRuntimeRuntimeCallLike;
-	};
-}
-/**
- * Send a batch of dispatch calls.
- * Unlike `batch`, it allows errors and won't interrupt.
- *
- * May be called from any origin except `None`.
- *
- * - `calls`: The calls to be dispatched from the same origin. The number of call must not
- * exceed the constant: `batched_calls_limit` (available in constant metadata).
- *
- * If origin is root then the calls are dispatch without checking origin filter. (This
- * includes bypassing `frame_system::Config::BaseCallFilter`).
- *
- * ## Complexity
- * - O(C) where C is the number of calls to be batched.
- **/
- | {
-	name: "ForceBatch";
-	params: {
-		calls: Array<MelodieRuntimeRuntimeCallLike>;
-	};
-}
-/**
- * Dispatch a function call with a specified weight.
- *
- * This function does not check the weight of the call, and instead allows the
- * Root origin to specify the weight of the call.
- *
- * The dispatch origin for this call must be _Root_.
- **/
- | {
-	name: "WithWeight";
+	name: "SudoUncheckedWeight";
 	params: {
 		call: MelodieRuntimeRuntimeCallLike;
 		weight: SpWeightsWeightV2Weight;
 	};
+}
+/**
+ * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
+ * key.
+ **/
+ | {
+	name: "SetKey";
+	params: {
+		new: MultiAddressLike;
+	};
+}
+/**
+ * Authenticates the sudo key and dispatches a function call with `Signed` origin from
+ * a given account.
+ *
+ * The dispatch origin for this call must be _Signed_.
+ **/
+ | {
+	name: "SudoAs";
+	params: {
+		who: MultiAddressLike;
+		call: MelodieRuntimeRuntimeCallLike;
+	};
+}
+/**
+ * Permanently removes the sudo key.
+ *
+ * **This cannot be un-done.**
+ **/
+ | {
+	name: "RemoveKey";
 };
-export type MelodieRuntimeRuntimeCallLike = {
-	pallet: "System";
-	palletCall: FrameSystemCallLike;
-} | {
-	pallet: "Balances";
-	palletCall: PalletBalancesCallLike;
-} | {
-	pallet: "Babe";
-	palletCall: PalletBabeCallLike;
-} | {
-	pallet: "Timestamp";
-	palletCall: PalletTimestampCallLike;
-} | {
-	pallet: "ImOnline";
-	palletCall: PalletImOnlineCallLike;
-} | {
-	pallet: "ValidatorSet";
-	palletCall: SubstrateValidatorSetCallLike;
-} | {
-	pallet: "Session";
-	palletCall: PalletSessionCallLike;
-} | {
-	pallet: "Grandpa";
-	palletCall: PalletGrandpaCallLike;
-} | {
-	pallet: "Utility";
-	palletCall: PalletUtilityCallLike;
-} | {
-	pallet: "Identity";
-	palletCall: PalletIdentityCallLike;
-} | {
-	pallet: "Scheduler";
-	palletCall: PalletSchedulerCallLike;
-} | {
-	pallet: "Sudo";
-	palletCall: PalletSudoCallLike;
-} | {
-	pallet: "Proxy";
-	palletCall: PalletProxyCallLike;
-} | {
-	pallet: "Multisig";
-	palletCall: PalletMultisigCallLike;
-} | {
-	pallet: "Preimage";
-	palletCall: PalletPreimageCallLike;
-} | {
-	pallet: "Stakeholders";
-	palletCall: PalletMiddsCallLike;
-} | {
-	pallet: "MusicalWorks";
-	palletCall: PalletMiddsCallLike002;
+export type PalletImOnlineCallLike = 
+/**
+ * ## Complexity:
+ * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
+ * - `O(K)`: decoding of length `K`
+ **/
+{
+	name: "Heartbeat";
+	params: {
+		heartbeat: PalletImOnlineHeartbeat;
+		signature: PalletImOnlineSr25519AppSr25519Signature;
+	};
 };
+export type PalletImOnlineHeartbeat = {
+	blockNumber: number;
+	sessionIndex: number;
+	authorityIndex: number;
+	validatorsLen: number;
+};
+export type PalletImOnlineSr25519AppSr25519Signature = FixedBytes<64>;
 export type PalletIdentityCallLike = 
 /**
  * Add a registrar to the system.
@@ -1977,7 +2078,7 @@ export type PalletIdentityCallLike =
  | {
 	name: "SetIdentity";
 	params: {
-		info: SharedRuntimeIdentityIdentityInfo;
+		info: PalletIdentityLegacyIdentityInfo;
 	};
 }
 /**
@@ -2212,8 +2313,9 @@ export type PalletIdentityCallLike =
 /**
  * Add an `AccountId` with permission to grant usernames with a given `suffix` appended.
  *
- * The authority can grant up to `allocation` usernames. To top up their allocation, they
- * should just issue (or request via governance) a new `add_username_authority` call.
+ * The authority can grant up to `allocation` usernames. To top up the allocation or
+ * change the account used to grant usernames, this call can be used with the updated
+ * parameters to overwrite the existing configuration.
  **/
  | {
 	name: "AddUsernameAuthority";
@@ -2229,13 +2331,18 @@ export type PalletIdentityCallLike =
  | {
 	name: "RemoveUsernameAuthority";
 	params: {
+		suffix: BytesLike;
 		authority: MultiAddressLike;
 	};
 }
 /**
  * Set the username for `who`. Must be called by a username authority.
  *
- * The authority must have an `allocation`. Users can either pre-sign their usernames or
+ * If `use_allocation` is set, the authority must have a username allocation available to
+ * spend. Otherwise, the authority will need to put up a deposit for registering the
+ * username.
+ *
+ * Users can either pre-sign their usernames or
  * accept them later.
  *
  * Usernames must:
@@ -2249,6 +2356,7 @@ export type PalletIdentityCallLike =
 		who: MultiAddressLike;
 		username: BytesLike;
 		signature?: SpRuntimeMultiSignature | undefined;
+		useAllocation: boolean;
 	};
 }
 /**
@@ -2282,16 +2390,37 @@ export type PalletIdentityCallLike =
 	};
 }
 /**
- * Remove a username that corresponds to an account with no identity. Exists when a user
- * gets a username but then calls `clear_identity`.
+ * Start the process of removing a username by placing it in the unbinding usernames map.
+ * Once the grace period has passed, the username can be deleted by calling
+ * [remove_username](crate::Call::remove_username).
  **/
  | {
-	name: "RemoveDanglingUsername";
+	name: "UnbindUsername";
+	params: {
+		username: BytesLike;
+	};
+}
+/**
+ * Permanently delete a username which has been unbinding for longer than the grace period.
+ * Caller is refunded the fee if the username expired and the removal was successful.
+ **/
+ | {
+	name: "RemoveUsername";
+	params: {
+		username: BytesLike;
+	};
+}
+/**
+ * Call with [ForceOrigin](crate::Config::ForceOrigin) privileges which deletes a username
+ * and slashes any deposit associated with it.
+ **/
+ | {
+	name: "KillUsername";
 	params: {
 		username: BytesLike;
 	};
 };
-export type SharedRuntimeIdentityIdentityInfo = {
+export type PalletIdentityLegacyIdentityInfo = {
 	additional: Array<[
 		Data,
 		Data
@@ -2299,14 +2428,11 @@ export type SharedRuntimeIdentityIdentityInfo = {
 	display: Data;
 	legal: Data;
 	web: Data;
-	matrix: Data;
+	riot: Data;
 	email: Data;
+	pgpFingerprint?: FixedBytes<20> | undefined;
+	image: Data;
 	twitter: Data;
-	instagram: Data;
-	youtube: Data;
-	tiktok: Data;
-	discord: Data;
-	telegram: Data;
 };
 export type PalletIdentityJudgement = {
 	type: "Unknown";
@@ -2484,60 +2610,66 @@ export type PalletSchedulerCallLike =
 		id: FixedBytes<32>;
 	};
 };
-export type PalletSudoCallLike = 
+export type PalletPreimageCallLike = 
 /**
- * Authenticates the sudo key and dispatches a function call with `Root` origin.
+ * Register a preimage on-chain.
+ *
+ * If the preimage was previously requested, no fees or deposits are taken for providing
+ * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
  **/
 {
-	name: "Sudo";
+	name: "NotePreimage";
 	params: {
-		call: MelodieRuntimeRuntimeCallLike;
+		bytes: BytesLike;
 	};
 }
 /**
- * Authenticates the sudo key and dispatches a function call with `Root` origin.
- * This function does not check the weight of the call, and instead allows the
- * Sudo user to specify the weight of the call.
+ * Clear an unrequested preimage from the runtime storage.
  *
- * The dispatch origin for this call must be _Signed_.
- **/
- | {
-	name: "SudoUncheckedWeight";
-	params: {
-		call: MelodieRuntimeRuntimeCallLike;
-		weight: SpWeightsWeightV2Weight;
-	};
-}
-/**
- * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
- * key.
- **/
- | {
-	name: "SetKey";
-	params: {
-		new: MultiAddressLike;
-	};
-}
-/**
- * Authenticates the sudo key and dispatches a function call with `Signed` origin from
- * a given account.
+ * If `len` is provided, then it will be a much cheaper operation.
  *
- * The dispatch origin for this call must be _Signed_.
+ * - `hash`: The hash of the preimage to be removed from the store.
+ * - `len`: The length of the preimage of `hash`.
  **/
  | {
-	name: "SudoAs";
+	name: "UnnotePreimage";
 	params: {
-		who: MultiAddressLike;
-		call: MelodieRuntimeRuntimeCallLike;
+		hash: H256;
 	};
 }
 /**
- * Permanently removes the sudo key.
+ * Request a preimage be uploaded to the chain without paying any fees or deposits.
  *
- * **This cannot be un-done.**
+ * If the preimage requests has already been provided on-chain, we unreserve any deposit
+ * a user may have paid, and take the control of the preimage out of their hands.
  **/
  | {
-	name: "RemoveKey";
+	name: "RequestPreimage";
+	params: {
+		hash: H256;
+	};
+}
+/**
+ * Clear a previously made request for a preimage.
+ *
+ * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
+ **/
+ | {
+	name: "UnrequestPreimage";
+	params: {
+		hash: H256;
+	};
+}
+/**
+ * Ensure that the a bulk of pre-images is upgraded.
+ *
+ * The caller pays no fee if at least 90% of pre-images were successfully updated.
+ **/
+ | {
+	name: "EnsureUpdated";
+	params: {
+		hashes: Array<H256>;
+	};
 };
 export type PalletProxyCallLike = 
 /**
@@ -2893,65 +3025,127 @@ export type PalletMultisigCallLike =
 		callHash: FixedBytes<32>;
 	};
 };
-export type PalletPreimageCallLike = 
+export type PalletSafeModeCallLike = 
 /**
- * Register a preimage on-chain.
+ * Enter safe-mode permissionlessly for [`Config::EnterDuration`] blocks.
  *
- * If the preimage was previously requested, no fees or deposits are taken for providing
- * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
+ * Reserves [`Config::EnterDepositAmount`] from the caller's account.
+ * Emits an [`Event::Entered`] event on success.
+ * Errors with [`Error::Entered`] if the safe-mode is already entered.
+ * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
  **/
 {
-	name: "NotePreimage";
+	name: "Enter";
+}
+/**
+ * Enter safe-mode by force for a per-origin configured number of blocks.
+ *
+ * Emits an [`Event::Entered`] event on success.
+ * Errors with [`Error::Entered`] if the safe-mode is already entered.
+ *
+ * Can only be called by the [`Config::ForceEnterOrigin`] origin.
+ **/
+ | {
+	name: "ForceEnter";
+}
+/**
+ * Extend the safe-mode permissionlessly for [`Config::ExtendDuration`] blocks.
+ *
+ * This accumulates on top of the current remaining duration.
+ * Reserves [`Config::ExtendDepositAmount`] from the caller's account.
+ * Emits an [`Event::Extended`] event on success.
+ * Errors with [`Error::Exited`] if the safe-mode is entered.
+ * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
+ *
+ * This may be called by any signed origin with [`Config::ExtendDepositAmount`] free
+ * currency to reserve. This call can be disabled for all origins by configuring
+ * [`Config::ExtendDepositAmount`] to `None`.
+ **/
+ | {
+	name: "Extend";
+}
+/**
+ * Extend the safe-mode by force for a per-origin configured number of blocks.
+ *
+ * Emits an [`Event::Extended`] event on success.
+ * Errors with [`Error::Exited`] if the safe-mode is inactive.
+ *
+ * Can only be called by the [`Config::ForceExtendOrigin`] origin.
+ **/
+ | {
+	name: "ForceExtend";
+}
+/**
+ * Exit safe-mode by force.
+ *
+ * Emits an [`Event::Exited`] with [`ExitReason::Force`] event on success.
+ * Errors with [`Error::Exited`] if the safe-mode is inactive.
+ *
+ * Note: `safe-mode` will be automatically deactivated by [`Pallet::on_initialize`] hook
+ * after the block height is greater than the [`EnteredUntil`] storage item.
+ * Emits an [`Event::Exited`] with [`ExitReason::Timeout`] event when deactivated in the
+ * hook.
+ **/
+ | {
+	name: "ForceExit";
+}
+/**
+ * Slash a deposit for an account that entered or extended safe-mode at a given
+ * historical block.
+ *
+ * This can only be called while safe-mode is entered.
+ *
+ * Emits a [`Event::DepositSlashed`] event on success.
+ * Errors with [`Error::Entered`] if safe-mode is entered.
+ *
+ * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+ **/
+ | {
+	name: "ForceSlashDeposit";
 	params: {
-		bytes: BytesLike;
+		account: AccountId32Like;
+		block: number;
 	};
 }
 /**
- * Clear an unrequested preimage from the runtime storage.
+ * Permissionlessly release a deposit for an account that entered safe-mode at a
+ * given historical block.
  *
- * If `len` is provided, then it will be a much cheaper operation.
+ * The call can be completely disabled by setting [`Config::ReleaseDelay`] to `None`.
+ * This cannot be called while safe-mode is entered and not until
+ * [`Config::ReleaseDelay`] blocks have passed since safe-mode was entered.
  *
- * - `hash`: The hash of the preimage to be removed from the store.
- * - `len`: The length of the preimage of `hash`.
+ * Emits a [`Event::DepositReleased`] event on success.
+ * Errors with [`Error::Entered`] if the safe-mode is entered.
+ * Errors with [`Error::CannotReleaseYet`] if [`Config::ReleaseDelay`] block have not
+ * passed since safe-mode was entered. Errors with [`Error::NoDeposit`] if the payee has no
+ * reserved currency at the block specified.
  **/
  | {
-	name: "UnnotePreimage";
+	name: "ReleaseDeposit";
 	params: {
-		hash: H256;
+		account: AccountId32Like;
+		block: number;
 	};
 }
 /**
- * Request a preimage be uploaded to the chain without paying any fees or deposits.
+ * Force to release a deposit for an account that entered safe-mode at a given
+ * historical block.
  *
- * If the preimage requests has already been provided on-chain, we unreserve any deposit
- * a user may have paid, and take the control of the preimage out of their hands.
+ * This can be called while safe-mode is still entered.
+ *
+ * Emits a [`Event::DepositReleased`] event on success.
+ * Errors with [`Error::Entered`] if safe-mode is entered.
+ * Errors with [`Error::NoDeposit`] if the payee has no reserved currency at the
+ * specified block.
+ *
+ * Can only be called by the [`Config::ForceDepositOrigin`] origin.
  **/
  | {
-	name: "RequestPreimage";
+	name: "ForceReleaseDeposit";
 	params: {
-		hash: H256;
-	};
-}
-/**
- * Clear a previously made request for a preimage.
- *
- * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
- **/
- | {
-	name: "UnrequestPreimage";
-	params: {
-		hash: H256;
-	};
-}
-/**
- * Ensure that the a bulk of pre-images is upgraded.
- *
- * The caller pays no fee if at least 90% of pre-images were successfully updated.
- **/
- | {
-	name: "EnsureUpdated";
-	params: {
-		hashes: Array<H256>;
+		account: AccountId32Like;
+		block: number;
 	};
 };
 export type PalletMiddsCallLike = {
@@ -2994,13 +3188,13 @@ export type MiddsStakeholderEditableStakeholderField = {
 export type PalletMiddsCallLike002 = {
 	name: "Register";
 	params: {
-		midds: MiddsSongSong;
+		midds: MiddsMusicalWorkMusicalWork;
 	};
 } | {
 	name: "UpdateField";
 	params: {
 		middsId: H256;
-		fieldData: MiddsSongSongEditableField;
+		fieldData: MiddsMusicalWorkMusicalWorkEditableField;
 	};
 } | {
 	name: "Unregister";
@@ -3008,12 +3202,12 @@ export type PalletMiddsCallLike002 = {
 		middsId: H256;
 	};
 };
-export type MiddsSongSong = {
+export type MiddsMusicalWorkMusicalWork = {
 	iswc?: AllfeatSupportIswc | undefined;
 	title?: Bytes | undefined;
 	duration?: number | undefined;
-	type?: AllfeatSupportSongType | undefined;
-	shares?: Array<MiddsSongShare> | undefined;
+	type?: AllfeatSupportMusicalWorkType | undefined;
+	shares?: Array<MiddsMusicalWorkShare> | undefined;
 };
 export type AllfeatSupportIswc = {
 	group1: number;
@@ -3021,18 +3215,18 @@ export type AllfeatSupportIswc = {
 	group3: number;
 	checkDigit: number;
 };
-export type AllfeatSupportSongType = "Instrumental" | "Song";
-export type MiddsSongShare = {
+export type AllfeatSupportMusicalWorkType = "Instrumental" | "Song";
+export type MiddsMusicalWorkShare = {
 	stakeholderId: H256;
-	shareInfo: MiddsSongShareInfo;
+	shareInfo: MiddsMusicalWorkShareInfo;
 };
-export type MiddsSongShareInfo = {
-	role: MiddsSongRole;
+export type MiddsMusicalWorkShareInfo = {
+	role: MiddsMusicalWorkRole;
 	performanceShare: Percent;
 	mechanicalShare: Percent;
 };
-export type MiddsSongRole = "A" | "Ad" | "Am" | "Ar" | "C" | "Ca" | "E" | "Es" | "Pa" | "Pr" | "Sa" | "Se" | "Sr" | "Tr";
-export type MiddsSongSongEditableField = {
+export type MiddsMusicalWorkRole = "A" | "Ad" | "Am" | "Ar" | "C" | "Ca" | "E" | "Es" | "Pa" | "Pr" | "Sa" | "Se" | "Sr" | "Tr";
+export type MiddsMusicalWorkMusicalWorkEditableField = {
 	type: "Iswc";
 	value?: AllfeatSupportIswc | undefined;
 } | {
@@ -3043,14 +3237,14 @@ export type MiddsSongSongEditableField = {
 	value?: number | undefined;
 } | {
 	type: "Type";
-	value?: AllfeatSupportSongType | undefined;
+	value?: AllfeatSupportMusicalWorkType | undefined;
 } | {
 	type: "Shares";
-	value: MiddsSongSharesEditAction;
+	value: MiddsMusicalWorkSharesEditAction;
 };
-export type MiddsSongSharesEditAction = {
+export type MiddsMusicalWorkSharesEditAction = {
 	type: "Add";
-	value: MiddsSongShare;
+	value: MiddsMusicalWorkShare;
 } | {
 	type: "Remove";
 	value: number;
@@ -3071,13 +3265,111 @@ export type FrameSupportDispatchRawOrigin = {
 	type: "None";
 };
 export type SpCoreVoid = null;
+export type SpConsensusBabeDigestsPreDigest = {
+	type: "Primary";
+	value: SpConsensusBabeDigestsPrimaryPreDigest;
+} | {
+	type: "SecondaryPlain";
+	value: SpConsensusBabeDigestsSecondaryPlainPreDigest;
+} | {
+	type: "SecondaryVRF";
+	value: SpConsensusBabeDigestsSecondaryVRFPreDigest;
+};
+export type SpConsensusBabeDigestsPrimaryPreDigest = {
+	authorityIndex: number;
+	slot: SpConsensusSlotsSlot;
+	vrfSignature: SpCoreSr25519VrfVrfSignature;
+};
+export type SpCoreSr25519VrfVrfSignature = {
+	preOutput: FixedBytes<32>;
+	proof: FixedBytes<64>;
+};
+export type SpConsensusBabeDigestsSecondaryPlainPreDigest = {
+	authorityIndex: number;
+	slot: SpConsensusSlotsSlot;
+};
+export type SpConsensusBabeDigestsSecondaryVRFPreDigest = {
+	authorityIndex: number;
+	slot: SpConsensusSlotsSlot;
+	vrfSignature: SpCoreSr25519VrfVrfSignature;
+};
+export type SpConsensusBabeBabeEpochConfiguration = {
+	c: [
+		bigint,
+		bigint
+	];
+	allowedSlots: SpConsensusBabeAllowedSlots;
+};
+export type PalletBalancesBalanceLock = {
+	id: FixedBytes<8>;
+	amount: bigint;
+	reasons: PalletBalancesReasons;
+};
+export type PalletBalancesReasons = "Fee" | "Misc" | "All";
+export type PalletBalancesReserveData = {
+	id: FixedBytes<8>;
+	amount: bigint;
+};
+export type FrameSupportTokensMiscIdAmount = {
+	id: MelodieRuntimeRuntimeHoldReason;
+	amount: bigint;
+};
+export type MelodieRuntimeRuntimeHoldReason = {
+	type: "Preimage";
+	value: PalletPreimageHoldReason;
+} | {
+	type: "SafeMode";
+	value: PalletSafeModeHoldReason;
+} | {
+	type: "Stakeholders";
+	value: PalletMiddsHoldReason;
+} | {
+	type: "MusicalWorks";
+	value: PalletMiddsHoldReason;
+};
+export type PalletPreimageHoldReason = "Preimage";
+export type PalletSafeModeHoldReason = "EnterOrExtend";
+export type PalletMiddsHoldReason = "MiddsRegistration";
+export type FrameSupportTokensMiscIdAmountRuntimeFreezeReason = {
+	id: MelodieRuntimeRuntimeFreezeReason;
+	amount: bigint;
+};
+export type MelodieRuntimeRuntimeFreezeReason = null;
+export type PalletTransactionPaymentReleases = "V1Ancient" | "V2";
+export type SpCoreCryptoKeyTypeId = FixedBytes<4>;
+export type PalletGrandpaStoredState = {
+	type: "Live";
+} | {
+	type: "PendingPause";
+	value: {
+		scheduledAt: number;
+		delay: number;
+	};
+} | {
+	type: "Paused";
+} | {
+	type: "PendingResume";
+	value: {
+		scheduledAt: number;
+		delay: number;
+	};
+};
+export type PalletGrandpaStoredPendingChange = {
+	scheduledAt: number;
+	delay: number;
+	nextAuthorities: Array<[
+		SpConsensusGrandpaAppPublic,
+		bigint
+	]>;
+	forced?: number | undefined;
+};
 export type PalletIdentityRegistration = {
 	judgements: Array<[
 		number,
 		PalletIdentityJudgement
 	]>;
 	deposit: bigint;
-	info: SharedRuntimeIdentityIdentityInfo;
+	info: PalletIdentityLegacyIdentityInfo;
 };
 export type PalletIdentityRegistrarInfo = {
 	account: AccountId32;
@@ -3085,8 +3377,20 @@ export type PalletIdentityRegistrarInfo = {
 	fields: bigint;
 };
 export type PalletIdentityAuthorityProperties = {
-	suffix: Bytes;
+	accountId: AccountId32;
 	allocation: number;
+};
+export type PalletIdentityUsernameInformation = {
+	owner: AccountId32;
+	provider: PalletIdentityProvider;
+};
+export type PalletIdentityProvider = {
+	type: "Allocation";
+} | {
+	type: "AuthorityDeposit";
+	value: bigint;
+} | {
+	type: "System";
 };
 export type PalletSchedulerScheduled = {
 	maybeId?: FixedBytes<32> | undefined;
@@ -3118,23 +3422,6 @@ export type PalletSchedulerRetryConfig = {
 	remaining: number;
 	period: number;
 };
-export type PalletProxyProxyDefinition = {
-	delegate: AccountId32;
-	proxyType: MelodieRuntimePalletsProxyProxyType;
-	delay: number;
-};
-export type PalletProxyAnnouncement = {
-	real: AccountId32;
-	callHash: H256;
-	height: number;
-};
-export type PalletMultisigMultisig = {
-	when: PalletMultisigTimepoint;
-	deposit: bigint;
-	depositor: AccountId32;
-	approvals: Array<AccountId32>;
-};
-export type PalletTransactionPaymentReleases = "V1Ancient" | "V2";
 export type PalletPreimageOldRequestStatus = {
 	type: "Unrequested";
 	value: {
@@ -3176,18 +3463,143 @@ export type PalletPreimageRequestStatus = {
 	};
 };
 export type FrameSupportTokensFungibleHoldConsideration = bigint;
+export type PalletProxyProxyDefinition = {
+	delegate: AccountId32;
+	proxyType: MelodieRuntimePalletsProxyProxyType;
+	delay: number;
+};
+export type PalletProxyAnnouncement = {
+	real: AccountId32;
+	callHash: H256;
+	height: number;
+};
+export type PalletMultisigMultisig = {
+	when: PalletMultisigTimepoint;
+	deposit: bigint;
+	depositor: AccountId32;
+	approvals: Array<AccountId32>;
+};
 export type PalletMiddsMiddsWrapper = {
 	base: PalletMiddsBaseInfos;
 	midds: MiddsStakeholderStakeholder;
 };
 export type PalletMiddsBaseInfos = {
 	provider: AccountId32;
-	registeredAt: number;
+	registeredAt: bigint;
 };
 export type FrameSupportPalletId = FixedBytes<8>;
-export type PalletMiddsMiddsWrapperSong = {
+export type PalletMiddsMiddsWrapperMusicalWork = {
 	base: PalletMiddsBaseInfos;
-	midds: MiddsSongSong;
+	midds: MiddsMusicalWorkMusicalWork;
+};
+export type SpRuntimeBlock = {
+	header: Header;
+	extrinsics: Array<UncheckedExtrinsic>;
+};
+export type SpRuntimeExtrinsicInclusionMode = "AllExtrinsics" | "OnlyInherents";
+export type SpCoreOpaqueMetadata = Bytes;
+export type SpRuntimeTransactionValidityTransactionValidityError = {
+	type: "Invalid";
+	value: SpRuntimeTransactionValidityInvalidTransaction;
+} | {
+	type: "Unknown";
+	value: SpRuntimeTransactionValidityUnknownTransaction;
+};
+export type SpRuntimeTransactionValidityInvalidTransaction = {
+	type: "Call";
+} | {
+	type: "Payment";
+} | {
+	type: "Future";
+} | {
+	type: "Stale";
+} | {
+	type: "BadProof";
+} | {
+	type: "AncientBirthBlock";
+} | {
+	type: "ExhaustsResources";
+} | {
+	type: "Custom";
+	value: number;
+} | {
+	type: "BadMandatory";
+} | {
+	type: "MandatoryValidation";
+} | {
+	type: "BadSigner";
+} | {
+	type: "IndeterminateImplicit";
+} | {
+	type: "UnknownOrigin";
+};
+export type SpRuntimeTransactionValidityUnknownTransaction = {
+	type: "CannotLookup";
+} | {
+	type: "NoUnsignedValidator";
+} | {
+	type: "Custom";
+	value: number;
+};
+export type SpInherentsInherentData = {
+	data: Array<[
+		FixedBytes<8>,
+		Bytes
+	]>;
+};
+export type SpInherentsCheckInherentsResult = {
+	okay: boolean;
+	fatalError: boolean;
+	errors: SpInherentsInherentData;
+};
+export type SpRuntimeTransactionValidityTransactionSource = "InBlock" | "Local" | "External";
+export type SpRuntimeTransactionValidityValidTransaction = {
+	priority: bigint;
+	requires: Array<Bytes>;
+	provides: Array<Bytes>;
+	longevity: bigint;
+	propagate: boolean;
+};
+export type SpRuntimeOpaqueValue = Bytes;
+export type SpConsensusBabeBabeConfiguration = {
+	slotDuration: bigint;
+	epochLength: bigint;
+	c: [
+		bigint,
+		bigint
+	];
+	authorities: Array<[
+		SpConsensusBabeAppPublic,
+		bigint
+	]>;
+	randomness: FixedBytes<32>;
+	allowedSlots: SpConsensusBabeAllowedSlots;
+};
+export type SpConsensusBabeEpoch = {
+	epochIndex: bigint;
+	startSlot: SpConsensusSlotsSlot;
+	duration: bigint;
+	authorities: Array<[
+		SpConsensusBabeAppPublic,
+		bigint
+	]>;
+	randomness: FixedBytes<32>;
+	config: SpConsensusBabeBabeEpochConfiguration;
+};
+export type SpConsensusBabeOpaqueKeyOwnershipProof = Bytes;
+export type PalletTransactionPaymentRuntimeDispatchInfo = {
+	weight: SpWeightsWeightV2Weight;
+	class: FrameSupportDispatchDispatchClass;
+	partialFee: bigint;
+};
+export type PalletTransactionPaymentFeeDetails = {
+	inclusionFee?: PalletTransactionPaymentInclusionFee | undefined;
+	tip: bigint;
+};
+export type PalletTransactionPaymentInclusionFee = {
+	baseFee: bigint;
+	lenFee: bigint;
+	adjustedWeightFee: bigint;
 };
 export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<Rv> {
 	/**
@@ -3228,37 +3640,13 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		[name: string]: any;
 	};
 	/**
-	 * Pallet `Balances`'s constants
+	 * Pallet `Utility`'s constants
 	 **/
-	balances: {
+	utility: {
 		/**
-		 * The minimum amount required to keep an account open. MUST BE GREATER THAN ZERO!
-		 *
-		 * If you *really* need it to be zero, you can enable the feature `insecure_zero_ed` for
-		 * this pallet. However, you do so at your own risk: this will open up a major DoS vector.
-		 * In case you have multiple sources of provider references, you may also get unexpected
-		 * behaviour if you set this to zero.
-		 *
-		 * Bottom line: Do yourself a favour and make it at least one!
+		 * The limit on the number of batched calls.
 		 **/
-		existentialDeposit: bigint;
-		/**
-		 * The maximum number of locks that should exist on an account.
-		 * Not strictly enforced, but used for weight estimation.
-		 *
-		 * Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
-		 **/
-		maxLocks: number;
-		/**
-		 * The maximum number of named reserves that can exist on an account.
-		 *
-		 * Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
-		 **/
-		maxReserves: number;
-		/**
-		 * The maximum number of individual freeze locks that can exist on an account at any time.
-		 **/
-		maxFreezes: number;
+		batchedCallsLimit: number;
 		/**
 		 * Generic pallet constant
 		 **/
@@ -3314,25 +3702,79 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		[name: string]: any;
 	};
 	/**
-	 * Pallet `ImOnline`'s constants
+	 * Pallet `Authorship`'s constants
 	 **/
-	imOnline: {
-		/**
-		 * A configuration for base priority of unsigned transactions.
-		 *
-		 * This is exposed so that it can be tuned for particular runtime, when
-		 * multiple pallets send unsigned transactions.
-		 **/
-		unsignedPriority: bigint;
+	authorship: {
 		/**
 		 * Generic pallet constant
 		 **/
 		[name: string]: any;
 	};
 	/**
-	 * Pallet `Authorship`'s constants
+	 * Pallet `Balances`'s constants
 	 **/
-	authorship: {
+	balances: {
+		/**
+		 * The minimum amount required to keep an account open. MUST BE GREATER THAN ZERO!
+		 *
+		 * If you *really* need it to be zero, you can enable the feature `insecure_zero_ed` for
+		 * this pallet. However, you do so at your own risk: this will open up a major DoS vector.
+		 * In case you have multiple sources of provider references, you may also get unexpected
+		 * behaviour if you set this to zero.
+		 *
+		 * Bottom line: Do yourself a favour and make it at least one!
+		 **/
+		existentialDeposit: bigint;
+		/**
+		 * The maximum number of locks that should exist on an account.
+		 * Not strictly enforced, but used for weight estimation.
+		 *
+		 * Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
+		 **/
+		maxLocks: number;
+		/**
+		 * The maximum number of named reserves that can exist on an account.
+		 *
+		 * Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
+		 **/
+		maxReserves: number;
+		/**
+		 * The maximum number of individual freeze locks that can exist on an account at any time.
+		 **/
+		maxFreezes: number;
+		/**
+		 * Generic pallet constant
+		 **/
+		[name: string]: any;
+	};
+	/**
+	 * Pallet `TransactionPayment`'s constants
+	 **/
+	transactionPayment: {
+		/**
+		 * A fee multiplier for `Operational` extrinsics to compute "virtual tip" to boost their
+		 * `priority`
+		 *
+		 * This value is multiplied by the `final_fee` to obtain a "virtual tip" that is later
+		 * added to a tip component in regular `priority` calculations.
+		 * It means that a `Normal` transaction can front-run a similarly-sized `Operational`
+		 * extrinsic (with no tip), by including a tip value greater than the virtual tip.
+		 *
+		 * ```rust,ignore
+		 * // For `Normal`
+		 * let priority = priority_calc(tip);
+		 *
+		 * // For `Operational`
+		 * let virtual_tip = (inclusion_fee + tip) * OperationalFeeMultiplier;
+		 * let priority = priority_calc(tip + virtual_tip);
+		 * ```
+		 *
+		 * Note that since we use `final_fee` the multiplier applies also to the regular `tip`
+		 * sent with the transaction. So, not only does the transaction get a priority bump based
+		 * on the `inclusion_fee`, but we also amplify the impact of tips applied to `Operational`
+		 * transactions.
+		 **/
+		operationalFeeMultiplier: number;
 		/**
 		 * Generic pallet constant
 		 **/
@@ -3383,6 +3825,31 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		[name: string]: any;
 	};
 	/**
+	 * Pallet `Sudo`'s constants
+	 **/
+	sudo: {
+		/**
+		 * Generic pallet constant
+		 **/
+		[name: string]: any;
+	};
+	/**
+	 * Pallet `ImOnline`'s constants
+	 **/
+	imOnline: {
+		/**
+		 * A configuration for base priority of unsigned transactions.
+		 *
+		 * This is exposed so that it can be tuned for particular runtime, when
+		 * multiple pallets send unsigned transactions.
+		 **/
+		unsignedPriority: bigint;
+		/**
+		 * Generic pallet constant
+		 **/
+		[name: string]: any;
+	};
+	/**
 	 * Pallet `AuthorityDiscovery`'s constants
 	 **/
 	authorityDiscovery: {
@@ -3392,13 +3859,9 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		[name: string]: any;
 	};
 	/**
-	 * Pallet `Utility`'s constants
+	 * Pallet `Historical`'s constants
 	 **/
-	utility: {
-		/**
-		 * The limit on the number of batched calls.
-		 **/
-		batchedCallsLimit: number;
+	historical: {
 		/**
 		 * Generic pallet constant
 		 **/
@@ -3416,6 +3879,11 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		 * The amount held on deposit per encoded byte for a registered identity.
 		 **/
 		byteDeposit: bigint;
+		/**
+		 * The amount held on deposit per registered username. This value should change only in
+		 * runtime upgrades with proper migration of existing deposits.
+		 **/
+		usernameDeposit: bigint;
 		/**
 		 * The amount held on deposit for a registered subaccount. This should account for the fact
 		 * that one storage item's value will increase by the size of an account ID, and there will
@@ -3435,6 +3903,11 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		 * The number of blocks within which a username grant must be accepted.
 		 **/
 		pendingUsernameExpiration: number;
+		/**
+		 * The number of blocks that must pass to enable the permanent deletion of a username by
+		 * its respective authority.
+		 **/
+		usernameGracePeriod: number;
 		/**
 		 * The maximum length of a suffix.
 		 **/
@@ -3470,9 +3943,9 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		[name: string]: any;
 	};
 	/**
-	 * Pallet `Sudo`'s constants
+	 * Pallet `Preimage`'s constants
 	 **/
-	sudo: {
+	preimage: {
 		/**
 		 * Generic pallet constant
 		 **/
@@ -3553,51 +4026,51 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		[name: string]: any;
 	};
 	/**
-	 * Pallet `TransactionPayment`'s constants
+	 * Pallet `SafeMode`'s constants
 	 **/
-	transactionPayment: {
+	safeMode: {
 		/**
-		 * A fee multiplier for `Operational` extrinsics to compute "virtual tip" to boost their
-		 * `priority`
-		 *
-		 * This value is multiplied by the `final_fee` to obtain a "virtual tip" that is later
-		 * added to a tip component in regular `priority` calculations.
-		 * It means that a `Normal` transaction can front-run a similarly-sized `Operational`
-		 * extrinsic (with no tip), by including a tip value greater than the virtual tip.
-		 *
-		 * ```rust,ignore
-		 * // For `Normal`
-		 * let priority = priority_calc(tip);
-		 *
-		 * // For `Operational`
-		 * let virtual_tip = (inclusion_fee + tip) * OperationalFeeMultiplier;
-		 * let priority = priority_calc(tip + virtual_tip);
-		 * ```
-		 *
-		 * Note that since we use `final_fee` the multiplier applies also to the regular `tip`
-		 * sent with the transaction. So, not only does the transaction get a priority bump based
-		 * on the `inclusion_fee`, but we also amplify the impact of tips applied to `Operational`
-		 * transactions.
+		 * For how many blocks the safe-mode will be entered by [`Pallet::enter`].
 		 **/
-		operationalFeeMultiplier: number;
+		enterDuration: number;
+		/**
+		 * For how many blocks the safe-mode can be extended by each [`Pallet::extend`] call.
+		 *
+		 * This does not impose a hard limit as the safe-mode can be extended multiple times.
+		 **/
+		extendDuration: number;
+		/**
+		 * The amount that will be reserved upon calling [`Pallet::enter`].
+		 *
+		 * `None` disallows permissionlessly enabling the safe-mode and is a sane default.
+		 **/
+		enterDepositAmount: bigint | undefined;
+		/**
+		 * The amount that will be reserved upon calling [`Pallet::extend`].
+		 *
+		 * `None` disallows permissionlessly extending the safe-mode and is a sane default.
+		 **/
+		extendDepositAmount: bigint | undefined;
+		/**
+		 * The minimal duration a deposit will remain reserved after safe-mode is entered or
+		 * extended, unless [`Pallet::force_release_deposit`] is successfully called sooner.
+		 *
+		 * Every deposit is tied to a specific activation or extension, thus each deposit can be
+		 * released independently after the delay for it has passed.
+		 *
+		 * `None` disallows permissionlessly releasing the safe-mode deposits and is a sane
+		 * default.
+		 **/
+		releaseDelay: number | undefined;
 		/**
 		 * Generic pallet constant
 		 **/
 		[name: string]: any;
 	};
 	/**
-	 * Pallet `Historical`'s constants
+	 * Pallet `Mmr`'s constants
 	 **/
-	historical: {
-		/**
-		 * Generic pallet constant
-		 **/
-		[name: string]: any;
-	};
-	/**
-	 * Pallet `Preimage`'s constants
-	 **/
-	preimage: {
+	mmr: {
 		/**
 		 * Generic pallet constant
 		 **/
@@ -3624,7 +4097,7 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		/**
 		 * How many time the depositor have to wait to remove the MIDDS.
 		 **/
-		unregisterPeriod: number;
+		unregisterPeriod: bigint | undefined;
 		/**
 		 * Generic pallet constant
 		 **/
@@ -3651,16 +4124,7 @@ export interface ChainConsts<Rv extends RpcVersion> extends GenericChainConsts<R
 		/**
 		 * How many time the depositor have to wait to remove the MIDDS.
 		 **/
-		unregisterPeriod: number;
-		/**
-		 * Generic pallet constant
-		 **/
-		[name: string]: any;
-	};
-	/**
-	 * Pallet `Mmr`'s constants
-	 **/
-	mmr: {
+		unregisterPeriod: bigint | undefined;
 		/**
 		 * Generic pallet constant
 		 **/
@@ -3803,90 +4267,6 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		 * @param {Callback<FrameSystemCodeUpgradeAuthorization | undefined> =} callback
 		 **/
 		authorizedUpgrade: GenericStorageQuery<Rv, () => FrameSystemCodeUpgradeAuthorization | undefined>;
-		/**
-		 * Generic pallet storage query
-		 **/
-		[storage: string]: GenericStorageQuery<Rv>;
-	};
-	/**
-	 * Pallet `Balances`'s storage queries
-	 **/
-	balances: {
-		/**
-		 * The total units issued in the system.
-		 *
-		 * @param {Callback<bigint> =} callback
-		 **/
-		totalIssuance: GenericStorageQuery<Rv, () => bigint>;
-		/**
-		 * The total units of outstanding deactivated balance in the system.
-		 *
-		 * @param {Callback<bigint> =} callback
-		 **/
-		inactiveIssuance: GenericStorageQuery<Rv, () => bigint>;
-		/**
-		 * The Balances pallet example of storing the balance of an account.
-		 *
-		 * # Example
-		 *
-		 * ```nocompile
-		 * impl pallet_balances::Config for Runtime {
-		 * type AccountStore = StorageMapShim<Self::Account<Runtime>, frame_system::Provider<Runtime>, AccountId, Self::AccountData<Balance>>
-		 * }
-		 * ```
-		 *
-		 * You can also store the balance of an account in the `System` pallet.
-		 *
-		 * # Example
-		 *
-		 * ```nocompile
-		 * impl pallet_balances::Config for Runtime {
-		 * type AccountStore = System
-		 * }
-		 * ```
-		 *
-		 * But this comes with tradeoffs, storing account balances in the system pallet stores
-		 * `frame_system` data alongside the account data contrary to storing account balances in the
-		 * `Balances` pallet, which uses a `StorageMap` to store balances data only.
-		 * NOTE: This is only used in the case that this pallet is used to store balances.
-		 *
-		 * @param {AccountId32Like} arg
-		 * @param {Callback<PalletBalancesAccountData> =} callback
-		 **/
-		account: GenericStorageQuery<Rv, (arg: AccountId32Like) => PalletBalancesAccountData, AccountId32>;
-		/**
-		 * Any liquidity locks on some account balances.
-		 * NOTE: Should only be accessed when setting, changing and freeing a lock.
-		 *
-		 * Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
-		 *
-		 * @param {AccountId32Like} arg
-		 * @param {Callback<Array<PalletBalancesBalanceLock>> =} callback
-		 **/
-		locks: GenericStorageQuery<Rv, (arg: AccountId32Like) => Array<PalletBalancesBalanceLock>, AccountId32>;
-		/**
-		 * Named reserves on some account balances.
-		 *
-		 * Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
-		 *
-		 * @param {AccountId32Like} arg
-		 * @param {Callback<Array<PalletBalancesReserveData>> =} callback
-		 **/
-		reserves: GenericStorageQuery<Rv, (arg: AccountId32Like) => Array<PalletBalancesReserveData>, AccountId32>;
-		/**
-		 * Holds on account balances.
-		 *
-		 * @param {AccountId32Like} arg
-		 * @param {Callback<Array<FrameSupportTokensMiscIdAmount>> =} callback
-		 **/
-		holds: GenericStorageQuery<Rv, (arg: AccountId32Like) => Array<FrameSupportTokensMiscIdAmount>, AccountId32>;
-		/**
-		 * Freeze locks on account balances.
-		 *
-		 * @param {AccountId32Like} arg
-		 * @param {Callback<Array<FrameSupportTokensMiscIdAmountRuntimeFreezeReason>> =} callback
-		 **/
-		freezes: GenericStorageQuery<Rv, (arg: AccountId32Like) => Array<FrameSupportTokensMiscIdAmountRuntimeFreezeReason>, AccountId32>;
 		/**
 		 * Generic pallet storage query
 		 **/
@@ -4080,64 +4460,6 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		[storage: string]: GenericStorageQuery<Rv>;
 	};
 	/**
-	 * Pallet `ImOnline`'s storage queries
-	 **/
-	imOnline: {
-		/**
-		 * The block number after which it's ok to send heartbeats in the current
-		 * session.
-		 *
-		 * At the beginning of each session we set this to a value that should fall
-		 * roughly in the middle of the session duration. The idea is to first wait for
-		 * the validators to produce a block in the current session, so that the
-		 * heartbeat later on will not be necessary.
-		 *
-		 * This value will only be used as a fallback if we fail to get a proper session
-		 * progress estimate from `NextSessionRotation`, as those estimates should be
-		 * more accurate then the value we calculate for `HeartbeatAfter`.
-		 *
-		 * @param {Callback<number> =} callback
-		 **/
-		heartbeatAfter: GenericStorageQuery<Rv, () => number>;
-		/**
-		 * The current set of keys that may issue a heartbeat.
-		 *
-		 * @param {Callback<Array<PalletImOnlineSr25519AppSr25519Public>> =} callback
-		 **/
-		keys: GenericStorageQuery<Rv, () => Array<PalletImOnlineSr25519AppSr25519Public>>;
-		/**
-		 * For each session index, we keep a mapping of `SessionIndex` and `AuthIndex`.
-		 *
-		 * @param {[number, number]} arg
-		 * @param {Callback<boolean | undefined> =} callback
-		 **/
-		receivedHeartbeats: GenericStorageQuery<Rv, (arg: [
-			number,
-			number
-		]) => boolean | undefined, [
-			number,
-			number
-		]>;
-		/**
-		 * For each session index, we keep a mapping of `ValidatorId<T>` to the
-		 * number of blocks authored by the given authority.
-		 *
-		 * @param {[number, AccountId32Like]} arg
-		 * @param {Callback<number> =} callback
-		 **/
-		authoredBlocks: GenericStorageQuery<Rv, (arg: [
-			number,
-			AccountId32Like
-		]) => number, [
-			number,
-			AccountId32
-		]>;
-		/**
-		 * Generic pallet storage query
-		 **/
-		[storage: string]: GenericStorageQuery<Rv>;
-	};
-	/**
 	 * Pallet `Authorship`'s storage queries
 	 **/
 	authorship: {
@@ -4147,6 +4469,109 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		 * @param {Callback<AccountId32 | undefined> =} callback
 		 **/
 		author: GenericStorageQuery<Rv, () => AccountId32 | undefined>;
+		/**
+		 * Generic pallet storage query
+		 **/
+		[storage: string]: GenericStorageQuery<Rv>;
+	};
+	/**
+	 * Pallet `Balances`'s storage queries
+	 **/
+	balances: {
+		/**
+		 * The total units issued in the system.
+		 *
+		 * @param {Callback<bigint> =} callback
+		 **/
+		totalIssuance: GenericStorageQuery<Rv, () => bigint>;
+		/**
+		 * The total units of outstanding deactivated balance in the system.
+		 *
+		 * @param {Callback<bigint> =} callback
+		 **/
+		inactiveIssuance: GenericStorageQuery<Rv, () => bigint>;
+		/**
+		 * The Balances pallet example of storing the balance of an account.
+		 *
+		 * # Example
+		 *
+		 * ```nocompile
+		 * impl pallet_balances::Config for Runtime {
+		 * type AccountStore = StorageMapShim<Self::Account<Runtime>, frame_system::Provider<Runtime>, AccountId, Self::AccountData<Balance>>
+		 * }
+		 * ```
+		 *
+		 * You can also store the balance of an account in the `System` pallet.
+		 *
+		 * # Example
+		 *
+		 * ```nocompile
+		 * impl pallet_balances::Config for Runtime {
+		 * type AccountStore = System
+		 * }
+		 * ```
+		 *
+		 * But this comes with tradeoffs, storing account balances in the system pallet stores
+		 * `frame_system` data alongside the account data contrary to storing account balances in the
+		 * `Balances` pallet, which uses a `StorageMap` to store balances data only.
+		 * NOTE: This is only used in the case that this pallet is used to store balances.
+		 *
+		 * @param {AccountId32Like} arg
+		 * @param {Callback<PalletBalancesAccountData> =} callback
+		 **/
+		account: GenericStorageQuery<Rv, (arg: AccountId32Like) => PalletBalancesAccountData, AccountId32>;
+		/**
+		 * Any liquidity locks on some account balances.
+		 * NOTE: Should only be accessed when setting, changing and freeing a lock.
+		 *
+		 * Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
+		 *
+		 * @param {AccountId32Like} arg
+		 * @param {Callback<Array<PalletBalancesBalanceLock>> =} callback
+		 **/
+		locks: GenericStorageQuery<Rv, (arg: AccountId32Like) => Array<PalletBalancesBalanceLock>, AccountId32>;
+		/**
+		 * Named reserves on some account balances.
+		 *
+		 * Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
+		 *
+		 * @param {AccountId32Like} arg
+		 * @param {Callback<Array<PalletBalancesReserveData>> =} callback
+		 **/
+		reserves: GenericStorageQuery<Rv, (arg: AccountId32Like) => Array<PalletBalancesReserveData>, AccountId32>;
+		/**
+		 * Holds on account balances.
+		 *
+		 * @param {AccountId32Like} arg
+		 * @param {Callback<Array<FrameSupportTokensMiscIdAmount>> =} callback
+		 **/
+		holds: GenericStorageQuery<Rv, (arg: AccountId32Like) => Array<FrameSupportTokensMiscIdAmount>, AccountId32>;
+		/**
+		 * Freeze locks on account balances.
+		 *
+		 * @param {AccountId32Like} arg
+		 * @param {Callback<Array<FrameSupportTokensMiscIdAmountRuntimeFreezeReason>> =} callback
+		 **/
+		freezes: GenericStorageQuery<Rv, (arg: AccountId32Like) => Array<FrameSupportTokensMiscIdAmountRuntimeFreezeReason>, AccountId32>;
+		/**
+		 * Generic pallet storage query
+		 **/
+		[storage: string]: GenericStorageQuery<Rv>;
+	};
+	/**
+	 * Pallet `TransactionPayment`'s storage queries
+	 **/
+	transactionPayment: {
+		/**
+		 *
+		 * @param {Callback<FixedU128> =} callback
+		 **/
+		nextFeeMultiplier: GenericStorageQuery<Rv, () => FixedU128>;
+		/**
+		 *
+		 * @param {Callback<PalletTransactionPaymentReleases> =} callback
+		 **/
+		storageVersion: GenericStorageQuery<Rv, () => PalletTransactionPaymentReleases>;
 		/**
 		 * Generic pallet storage query
 		 **/
@@ -4308,6 +4733,79 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		[storage: string]: GenericStorageQuery<Rv>;
 	};
 	/**
+	 * Pallet `Sudo`'s storage queries
+	 **/
+	sudo: {
+		/**
+		 * The `AccountId` of the sudo key.
+		 *
+		 * @param {Callback<AccountId32 | undefined> =} callback
+		 **/
+		key: GenericStorageQuery<Rv, () => AccountId32 | undefined>;
+		/**
+		 * Generic pallet storage query
+		 **/
+		[storage: string]: GenericStorageQuery<Rv>;
+	};
+	/**
+	 * Pallet `ImOnline`'s storage queries
+	 **/
+	imOnline: {
+		/**
+		 * The block number after which it's ok to send heartbeats in the current
+		 * session.
+		 *
+		 * At the beginning of each session we set this to a value that should fall
+		 * roughly in the middle of the session duration. The idea is to first wait for
+		 * the validators to produce a block in the current session, so that the
+		 * heartbeat later on will not be necessary.
+		 *
+		 * This value will only be used as a fallback if we fail to get a proper session
+		 * progress estimate from `NextSessionRotation`, as those estimates should be
+		 * more accurate then the value we calculate for `HeartbeatAfter`.
+		 *
+		 * @param {Callback<number> =} callback
+		 **/
+		heartbeatAfter: GenericStorageQuery<Rv, () => number>;
+		/**
+		 * The current set of keys that may issue a heartbeat.
+		 *
+		 * @param {Callback<Array<PalletImOnlineSr25519AppSr25519Public>> =} callback
+		 **/
+		keys: GenericStorageQuery<Rv, () => Array<PalletImOnlineSr25519AppSr25519Public>>;
+		/**
+		 * For each session index, we keep a mapping of `SessionIndex` and `AuthIndex`.
+		 *
+		 * @param {[number, number]} arg
+		 * @param {Callback<boolean | undefined> =} callback
+		 **/
+		receivedHeartbeats: GenericStorageQuery<Rv, (arg: [
+			number,
+			number
+		]) => boolean | undefined, [
+			number,
+			number
+		]>;
+		/**
+		 * For each session index, we keep a mapping of `ValidatorId<T>` to the
+		 * number of blocks authored by the given authority.
+		 *
+		 * @param {[number, AccountId32Like]} arg
+		 * @param {Callback<number> =} callback
+		 **/
+		authoredBlocks: GenericStorageQuery<Rv, (arg: [
+			number,
+			AccountId32Like
+		]) => number, [
+			number,
+			AccountId32
+		]>;
+		/**
+		 * Generic pallet storage query
+		 **/
+		[storage: string]: GenericStorageQuery<Rv>;
+	};
+	/**
 	 * Pallet `AuthorityDiscovery`'s storage queries
 	 **/
 	authorityDiscovery: {
@@ -4329,6 +4827,34 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		[storage: string]: GenericStorageQuery<Rv>;
 	};
 	/**
+	 * Pallet `Historical`'s storage queries
+	 **/
+	historical: {
+		/**
+		 * Mapping from historical session indices to session-data root hash and validator count.
+		 *
+		 * @param {number} arg
+		 * @param {Callback<[H256, number] | undefined> =} callback
+		 **/
+		historicalSessions: GenericStorageQuery<Rv, (arg: number) => [
+			H256,
+			number
+		] | undefined, number>;
+		/**
+		 * The range of historical sessions we store. [first, last)
+		 *
+		 * @param {Callback<[number, number] | undefined> =} callback
+		 **/
+		storedRange: GenericStorageQuery<Rv, () => [
+			number,
+			number
+		] | undefined>;
+		/**
+		 * Generic pallet storage query
+		 **/
+		[storage: string]: GenericStorageQuery<Rv>;
+	};
+	/**
 	 * Pallet `Identity`'s storage queries
 	 **/
 	identity: {
@@ -4339,12 +4865,16 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		 * TWOX-NOTE: OK ― `AccountId` is a secure hash.
 		 *
 		 * @param {AccountId32Like} arg
-		 * @param {Callback<[PalletIdentityRegistration, Bytes | undefined] | undefined> =} callback
+		 * @param {Callback<PalletIdentityRegistration | undefined> =} callback
 		 **/
-		identityOf: GenericStorageQuery<Rv, (arg: AccountId32Like) => [
-			PalletIdentityRegistration,
-			Bytes | undefined
-		] | undefined, AccountId32>;
+		identityOf: GenericStorageQuery<Rv, (arg: AccountId32Like) => PalletIdentityRegistration | undefined, AccountId32>;
+		/**
+		 * Identifies the primary username of an account.
+		 *
+		 * @param {AccountId32Like} arg
+		 * @param {Callback<Bytes | undefined> =} callback
+		 **/
+		usernameOf: GenericStorageQuery<Rv, (arg: AccountId32Like) => Bytes | undefined, AccountId32>;
 		/**
 		 * The super-identity of an alternative "sub" identity together with its name, within that
 		 * context. If the account is not some other account's sub-identity, then just `None`.
@@ -4382,36 +4912,48 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		/**
 		 * A map of the accounts who are authorized to grant usernames.
 		 *
-		 * @param {AccountId32Like} arg
+		 * @param {BytesLike} arg
 		 * @param {Callback<PalletIdentityAuthorityProperties | undefined> =} callback
 		 **/
-		usernameAuthorities: GenericStorageQuery<Rv, (arg: AccountId32Like) => PalletIdentityAuthorityProperties | undefined, AccountId32>;
+		authorityOf: GenericStorageQuery<Rv, (arg: BytesLike) => PalletIdentityAuthorityProperties | undefined, Bytes>;
 		/**
-		 * Reverse lookup from `username` to the `AccountId` that has registered it. The value should
-		 * be a key in the `IdentityOf` map, but it may not if the user has cleared their identity.
+		 * Reverse lookup from `username` to the `AccountId` that has registered it and the provider of
+		 * the username. The `owner` value should be a key in the `UsernameOf` map, but it may not if
+		 * the user has cleared their username or it has been removed.
 		 *
-		 * Multiple usernames may map to the same `AccountId`, but `IdentityOf` will only map to one
+		 * Multiple usernames may map to the same `AccountId`, but `UsernameOf` will only map to one
 		 * primary username.
 		 *
 		 * @param {BytesLike} arg
-		 * @param {Callback<AccountId32 | undefined> =} callback
+		 * @param {Callback<PalletIdentityUsernameInformation | undefined> =} callback
 		 **/
-		accountOfUsername: GenericStorageQuery<Rv, (arg: BytesLike) => AccountId32 | undefined, Bytes>;
+		usernameInfoOf: GenericStorageQuery<Rv, (arg: BytesLike) => PalletIdentityUsernameInformation | undefined, Bytes>;
 		/**
 		 * Usernames that an authority has granted, but that the account controller has not confirmed
 		 * that they want it. Used primarily in cases where the `AccountId` cannot provide a signature
 		 * because they are a pure proxy, multisig, etc. In order to confirm it, they should call
-		 * [`Call::accept_username`].
+		 * [accept_username](`Call::accept_username`).
 		 *
 		 * First tuple item is the account and second is the acceptance deadline.
 		 *
 		 * @param {BytesLike} arg
-		 * @param {Callback<[AccountId32, number] | undefined> =} callback
+		 * @param {Callback<[AccountId32, number, PalletIdentityProvider] | undefined> =} callback
 		 **/
 		pendingUsernames: GenericStorageQuery<Rv, (arg: BytesLike) => [
 			AccountId32,
-			number
+			number,
+			PalletIdentityProvider
 		] | undefined, Bytes>;
+		/**
+		 * Usernames for which the authority that granted them has started the removal process by
+		 * unbinding them. Each unbinding username maps to its grace period expiry, which is the first
+		 * block in which the username could be deleted through a
+		 * [remove_username](`Call::remove_username`) call.
+		 *
+		 * @param {BytesLike} arg
+		 * @param {Callback<number | undefined> =} callback
+		 **/
+		unbindingUsernames: GenericStorageQuery<Rv, (arg: BytesLike) => number | undefined, Bytes>;
 		/**
 		 * Generic pallet storage query
 		 **/
@@ -4465,15 +5007,35 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		[storage: string]: GenericStorageQuery<Rv>;
 	};
 	/**
-	 * Pallet `Sudo`'s storage queries
+	 * Pallet `Preimage`'s storage queries
 	 **/
-	sudo: {
+	preimage: {
 		/**
-		 * The `AccountId` of the sudo key.
+		 * The request status of a given hash.
 		 *
-		 * @param {Callback<AccountId32 | undefined> =} callback
+		 * @param {H256} arg
+		 * @param {Callback<PalletPreimageOldRequestStatus | undefined> =} callback
 		 **/
-		key: GenericStorageQuery<Rv, () => AccountId32 | undefined>;
+		statusFor: GenericStorageQuery<Rv, (arg: H256) => PalletPreimageOldRequestStatus | undefined, H256>;
+		/**
+		 * The request status of a given hash.
+		 *
+		 * @param {H256} arg
+		 * @param {Callback<PalletPreimageRequestStatus | undefined> =} callback
+		 **/
+		requestStatusFor: GenericStorageQuery<Rv, (arg: H256) => PalletPreimageRequestStatus | undefined, H256>;
+		/**
+		 *
+		 * @param {[H256, number]} arg
+		 * @param {Callback<Bytes | undefined> =} callback
+		 **/
+		preimageFor: GenericStorageQuery<Rv, (arg: [
+			H256,
+			number
+		]) => Bytes | undefined, [
+			H256,
+			number
+		]>;
 		/**
 		 * Generic pallet storage query
 		 **/
@@ -4532,112 +5094,35 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		[storage: string]: GenericStorageQuery<Rv>;
 	};
 	/**
-	 * Pallet `TransactionPayment`'s storage queries
+	 * Pallet `SafeMode`'s storage queries
 	 **/
-	transactionPayment: {
+	safeMode: {
 		/**
+		 * Contains the last block number that the safe-mode will remain entered in.
 		 *
-		 * @param {Callback<FixedU128> =} callback
-		 **/
-		nextFeeMultiplier: GenericStorageQuery<Rv, () => FixedU128>;
-		/**
+		 * Set to `None` when safe-mode is exited.
 		 *
-		 * @param {Callback<PalletTransactionPaymentReleases> =} callback
-		 **/
-		storageVersion: GenericStorageQuery<Rv, () => PalletTransactionPaymentReleases>;
-		/**
-		 * Generic pallet storage query
-		 **/
-		[storage: string]: GenericStorageQuery<Rv>;
-	};
-	/**
-	 * Pallet `Historical`'s storage queries
-	 **/
-	historical: {
-		/**
-		 * Mapping from historical session indices to session-data root hash and validator count.
+		 * Safe-mode is automatically exited when the current block number exceeds this value.
 		 *
-		 * @param {number} arg
-		 * @param {Callback<[H256, number] | undefined> =} callback
+		 * @param {Callback<number | undefined> =} callback
 		 **/
-		historicalSessions: GenericStorageQuery<Rv, (arg: number) => [
-			H256,
+		enteredUntil: GenericStorageQuery<Rv, () => number | undefined>;
+		/**
+		 * Holds the reserve that was taken from an account at a specific block number.
+		 *
+		 * This helps governance to have an overview of outstanding deposits that should be returned or
+		 * slashed.
+		 *
+		 * @param {[AccountId32Like, number]} arg
+		 * @param {Callback<bigint | undefined> =} callback
+		 **/
+		deposits: GenericStorageQuery<Rv, (arg: [
+			AccountId32Like,
 			number
-		] | undefined, number>;
-		/**
-		 * The range of historical sessions we store. [first, last)
-		 *
-		 * @param {Callback<[number, number] | undefined> =} callback
-		 **/
-		storedRange: GenericStorageQuery<Rv, () => [
-			number,
-			number
-		] | undefined>;
-		/**
-		 * Generic pallet storage query
-		 **/
-		[storage: string]: GenericStorageQuery<Rv>;
-	};
-	/**
-	 * Pallet `Preimage`'s storage queries
-	 **/
-	preimage: {
-		/**
-		 * The request status of a given hash.
-		 *
-		 * @param {H256} arg
-		 * @param {Callback<PalletPreimageOldRequestStatus | undefined> =} callback
-		 **/
-		statusFor: GenericStorageQuery<Rv, (arg: H256) => PalletPreimageOldRequestStatus | undefined, H256>;
-		/**
-		 * The request status of a given hash.
-		 *
-		 * @param {H256} arg
-		 * @param {Callback<PalletPreimageRequestStatus | undefined> =} callback
-		 **/
-		requestStatusFor: GenericStorageQuery<Rv, (arg: H256) => PalletPreimageRequestStatus | undefined, H256>;
-		/**
-		 *
-		 * @param {[H256, number]} arg
-		 * @param {Callback<Bytes | undefined> =} callback
-		 **/
-		preimageFor: GenericStorageQuery<Rv, (arg: [
-			H256,
-			number
-		]) => Bytes | undefined, [
-			H256,
+		]) => bigint | undefined, [
+			AccountId32,
 			number
 		]>;
-		/**
-		 * Generic pallet storage query
-		 **/
-		[storage: string]: GenericStorageQuery<Rv>;
-	};
-	/**
-	 * Pallet `Stakeholders`'s storage queries
-	 **/
-	stakeholders: {
-		/**
-		 *
-		 * @param {H256} arg
-		 * @param {Callback<PalletMiddsMiddsWrapper | undefined> =} callback
-		 **/
-		pendingMidds: GenericStorageQuery<Rv, (arg: H256) => PalletMiddsMiddsWrapper | undefined, H256>;
-		/**
-		 * Generic pallet storage query
-		 **/
-		[storage: string]: GenericStorageQuery<Rv>;
-	};
-	/**
-	 * Pallet `MusicalWorks`'s storage queries
-	 **/
-	musicalWorks: {
-		/**
-		 *
-		 * @param {H256} arg
-		 * @param {Callback<PalletMiddsMiddsWrapperSong | undefined> =} callback
-		 **/
-		pendingMidds: GenericStorageQuery<Rv, (arg: H256) => PalletMiddsMiddsWrapperSong | undefined, H256>;
 		/**
 		 * Generic pallet storage query
 		 **/
@@ -4674,8 +5159,38 @@ export interface ChainStorage<Rv extends RpcVersion> extends GenericChainStorage
 		 **/
 		[storage: string]: GenericStorageQuery<Rv>;
 	};
+	/**
+	 * Pallet `Stakeholders`'s storage queries
+	 **/
+	stakeholders: {
+		/**
+		 *
+		 * @param {H256} arg
+		 * @param {Callback<PalletMiddsMiddsWrapper | undefined> =} callback
+		 **/
+		pendingMidds: GenericStorageQuery<Rv, (arg: H256) => PalletMiddsMiddsWrapper | undefined, H256>;
+		/**
+		 * Generic pallet storage query
+		 **/
+		[storage: string]: GenericStorageQuery<Rv>;
+	};
+	/**
+	 * Pallet `MusicalWorks`'s storage queries
+	 **/
+	musicalWorks: {
+		/**
+		 *
+		 * @param {H256} arg
+		 * @param {Callback<PalletMiddsMiddsWrapperMusicalWork | undefined> =} callback
+		 **/
+		pendingMidds: GenericStorageQuery<Rv, (arg: H256) => PalletMiddsMiddsWrapperMusicalWork | undefined, H256>;
+		/**
+		 * Generic pallet storage query
+		 **/
+		[storage: string]: GenericStorageQuery<Rv>;
+	};
 }
-export type ChainJsonRpcApis<Rv extends RpcVersion> = Pick<JsonRpcApis, "author_hasKey" | "author_hasSessionKeys" | "author_insertKey" | "author_pendingExtrinsics" | "author_removeExtrinsic" | "author_rotateKeys" | "author_submitAndWatchExtrinsic" | "author_submitExtrinsic" | "babe_epochAuthorship" | "chainHead_v1_body" | "chainHead_v1_call" | "chainHead_v1_continue" | "chainHead_v1_follow" | "chainHead_v1_header" | "chainHead_v1_stopOperation" | "chainHead_v1_storage" | "chainHead_v1_unpin" | "chainSpec_v1_chainName" | "chainSpec_v1_genesisHash" | "chainSpec_v1_properties" | "chain_getBlock" | "chain_getBlockHash" | "chain_getFinalizedHead" | "chain_getHeader" | "chain_subscribeAllHeads" | "chain_subscribeFinalizedHeads" | "chain_subscribeNewHeads" | "childstate_getKeys" | "childstate_getKeysPaged" | "childstate_getStorage" | "childstate_getStorageEntries" | "childstate_getStorageHash" | "childstate_getStorageSize" | "grandpa_proveFinality" | "grandpa_roundState" | "grandpa_subscribeJustifications" | "offchain_localStorageGet" | "offchain_localStorageSet" | "payment_queryFeeDetails" | "payment_queryInfo" | "rpc_methods" | "state_call" | "state_getChildReadProof" | "state_getKeys" | "state_getKeysPaged" | "state_getMetadata" | "state_getPairs" | "state_getReadProof" | "state_getRuntimeVersion" | "state_getStorage" | "state_getStorageHash" | "state_getStorageSize" | "state_queryStorage" | "state_queryStorageAt" | "state_subscribeRuntimeVersion" | "state_subscribeStorage" | "state_traceBlock" | "sync_state_genSyncSpec" | "system_accountNextIndex" | "system_addLogFilter" | "system_addReservedPeer" | "system_chain" | "system_chainType" | "system_dryRun" | "system_health" | "system_localListenAddresses" | "system_localPeerId" | "system_name" | "system_nodeRoles" | "system_peers" | "system_properties" | "system_removeReservedPeer" | "system_reservedPeers" | "system_resetLogFilter" | "system_syncState" | "system_unstable_networkState" | "system_version" | "transactionWatch_v1_submitAndWatch" | "transaction_v1_broadcast" | "transaction_v1_stop"> & GenericJsonRpcApis<Rv>;
+export type ChainJsonRpcApis<Rv extends RpcVersion> = Pick<JsonRpcApis, "author_hasKey" | "author_hasSessionKeys" | "author_insertKey" | "author_pendingExtrinsics" | "author_removeExtrinsic" | "author_rotateKeys" | "author_submitAndWatchExtrinsic" | "author_submitExtrinsic" | "babe_epochAuthorship" | "chainHead_v1_body" | "chainHead_v1_call" | "chainHead_v1_continue" | "chainHead_v1_follow" | "chainHead_v1_header" | "chainHead_v1_stopOperation" | "chainHead_v1_storage" | "chainHead_v1_unpin" | "chainSpec_v1_chainName" | "chainSpec_v1_genesisHash" | "chainSpec_v1_properties" | "chain_getBlock" | "chain_getBlockHash" | "chain_getFinalizedHead" | "chain_getHeader" | "chain_subscribeAllHeads" | "chain_subscribeFinalizedHeads" | "chain_subscribeNewHeads" | "childstate_getKeys" | "childstate_getKeysPaged" | "childstate_getStorage" | "childstate_getStorageEntries" | "childstate_getStorageHash" | "childstate_getStorageSize" | "grandpa_proveFinality" | "grandpa_roundState" | "grandpa_subscribeJustifications" | "offchain_localStorageGet" | "offchain_localStorageSet" | "payment_queryFeeDetails" | "payment_queryInfo" | "rpc_methods" | "state_call" | "state_getChildReadProof" | "state_getKeys" | "state_getKeysPaged" | "state_getMetadata" | "state_getPairs" | "state_getReadProof" | "state_getRuntimeVersion" | "state_getStorage" | "state_getStorageHash" | "state_getStorageSize" | "state_queryStorage" | "state_queryStorageAt" | "state_subscribeRuntimeVersion" | "state_subscribeStorage" | "state_traceBlock" | "system_accountNextIndex" | "system_addLogFilter" | "system_addReservedPeer" | "system_chain" | "system_chainType" | "system_dryRun" | "system_health" | "system_localListenAddresses" | "system_localPeerId" | "system_name" | "system_nodeRoles" | "system_peers" | "system_properties" | "system_removeReservedPeer" | "system_reservedPeers" | "system_resetLogFilter" | "system_syncState" | "system_unstable_networkState" | "system_version" | "transactionWatch_v1_submitAndWatch" | "transaction_v1_broadcast" | "transaction_v1_stop"> & GenericJsonRpcApis<Rv>;
 export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<Rv> {
 	/**
 	 * Pallet `System`'s errors
@@ -4735,6 +5250,44 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		[error: string]: GenericPalletError<Rv>;
 	};
 	/**
+	 * Pallet `Utility`'s errors
+	 **/
+	utility: {
+		/**
+		 * Too many calls batched.
+		 **/
+		TooManyCalls: GenericPalletError<Rv>;
+		/**
+		 * Generic pallet error
+		 **/
+		[error: string]: GenericPalletError<Rv>;
+	};
+	/**
+	 * Pallet `Babe`'s errors
+	 **/
+	babe: {
+		/**
+		 * An equivocation proof provided as part of an equivocation report is invalid.
+		 **/
+		InvalidEquivocationProof: GenericPalletError<Rv>;
+		/**
+		 * A key ownership proof provided as part of an equivocation report is invalid.
+		 **/
+		InvalidKeyOwnershipProof: GenericPalletError<Rv>;
+		/**
+		 * A given equivocation report is valid but already previously reported.
+		 **/
+		DuplicateOffenceReport: GenericPalletError<Rv>;
+		/**
+		 * Submitted configuration is invalid.
+		 **/
+		InvalidConfiguration: GenericPalletError<Rv>;
+		/**
+		 * Generic pallet error
+		 **/
+		[error: string]: GenericPalletError<Rv>;
+	};
+	/**
 	 * Pallet `Balances`'s errors
 	 **/
 	balances: {
@@ -4786,48 +5339,6 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		 * The delta cannot be zero.
 		 **/
 		DeltaZero: GenericPalletError<Rv>;
-		/**
-		 * Generic pallet error
-		 **/
-		[error: string]: GenericPalletError<Rv>;
-	};
-	/**
-	 * Pallet `Babe`'s errors
-	 **/
-	babe: {
-		/**
-		 * An equivocation proof provided as part of an equivocation report is invalid.
-		 **/
-		InvalidEquivocationProof: GenericPalletError<Rv>;
-		/**
-		 * A key ownership proof provided as part of an equivocation report is invalid.
-		 **/
-		InvalidKeyOwnershipProof: GenericPalletError<Rv>;
-		/**
-		 * A given equivocation report is valid but already previously reported.
-		 **/
-		DuplicateOffenceReport: GenericPalletError<Rv>;
-		/**
-		 * Submitted configuration is invalid.
-		 **/
-		InvalidConfiguration: GenericPalletError<Rv>;
-		/**
-		 * Generic pallet error
-		 **/
-		[error: string]: GenericPalletError<Rv>;
-	};
-	/**
-	 * Pallet `ImOnline`'s errors
-	 **/
-	imOnline: {
-		/**
-		 * Non existent public key.
-		 **/
-		InvalidKey: GenericPalletError<Rv>;
-		/**
-		 * Duplicated heartbeat.
-		 **/
-		DuplicatedHeartbeat: GenericPalletError<Rv>;
 		/**
 		 * Generic pallet error
 		 **/
@@ -4919,13 +5430,30 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		[error: string]: GenericPalletError<Rv>;
 	};
 	/**
-	 * Pallet `Utility`'s errors
+	 * Pallet `Sudo`'s errors
 	 **/
-	utility: {
+	sudo: {
 		/**
-		 * Too many calls batched.
+		 * Sender must be the Sudo account.
 		 **/
-		TooManyCalls: GenericPalletError<Rv>;
+		RequireSudo: GenericPalletError<Rv>;
+		/**
+		 * Generic pallet error
+		 **/
+		[error: string]: GenericPalletError<Rv>;
+	};
+	/**
+	 * Pallet `ImOnline`'s errors
+	 **/
+	imOnline: {
+		/**
+		 * Non existent public key.
+		 **/
+		InvalidKey: GenericPalletError<Rv>;
+		/**
+		 * Duplicated heartbeat.
+		 **/
+		DuplicatedHeartbeat: GenericPalletError<Rv>;
 		/**
 		 * Generic pallet error
 		 **/
@@ -5040,6 +5568,23 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		 **/
 		NotExpired: GenericPalletError<Rv>;
 		/**
+		 * The username cannot be removed because it's still in the grace period.
+		 **/
+		TooEarly: GenericPalletError<Rv>;
+		/**
+		 * The username cannot be removed because it is not unbinding.
+		 **/
+		NotUnbinding: GenericPalletError<Rv>;
+		/**
+		 * The username cannot be unbound because it is already unbinding.
+		 **/
+		AlreadyUnbinding: GenericPalletError<Rv>;
+		/**
+		 * The action cannot be performed because of insufficient privileges (e.g. authority
+		 * trying to unbind a username provided by the system).
+		 **/
+		InsufficientPrivileges: GenericPalletError<Rv>;
+		/**
 		 * Generic pallet error
 		 **/
 		[error: string]: GenericPalletError<Rv>;
@@ -5074,13 +5619,41 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		[error: string]: GenericPalletError<Rv>;
 	};
 	/**
-	 * Pallet `Sudo`'s errors
+	 * Pallet `Preimage`'s errors
 	 **/
-	sudo: {
+	preimage: {
 		/**
-		 * Sender must be the Sudo account.
+		 * Preimage is too large to store on-chain.
 		 **/
-		RequireSudo: GenericPalletError<Rv>;
+		TooBig: GenericPalletError<Rv>;
+		/**
+		 * Preimage has already been noted on-chain.
+		 **/
+		AlreadyNoted: GenericPalletError<Rv>;
+		/**
+		 * The user is not authorized to perform this action.
+		 **/
+		NotAuthorized: GenericPalletError<Rv>;
+		/**
+		 * The preimage cannot be removed since it has not yet been noted.
+		 **/
+		NotNoted: GenericPalletError<Rv>;
+		/**
+		 * A preimage may not be removed when there are outstanding requests.
+		 **/
+		Requested: GenericPalletError<Rv>;
+		/**
+		 * The preimage request cannot be removed since no outstanding requests exist.
+		 **/
+		NotRequested: GenericPalletError<Rv>;
+		/**
+		 * More than `MAX_HASH_UPGRADE_BULK_COUNT` hashes were requested to be upgraded at once.
+		 **/
+		TooMany: GenericPalletError<Rv>;
+		/**
+		 * Too few hashes were requested to be upgraded (i.e. zero).
+		 **/
+		TooFew: GenericPalletError<Rv>;
 		/**
 		 * Generic pallet error
 		 **/
@@ -5193,41 +5766,37 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		[error: string]: GenericPalletError<Rv>;
 	};
 	/**
-	 * Pallet `Preimage`'s errors
+	 * Pallet `SafeMode`'s errors
 	 **/
-	preimage: {
+	safeMode: {
 		/**
-		 * Preimage is too large to store on-chain.
+		 * The safe-mode is (already or still) entered.
 		 **/
-		TooBig: GenericPalletError<Rv>;
+		Entered: GenericPalletError<Rv>;
 		/**
-		 * Preimage has already been noted on-chain.
+		 * The safe-mode is (already or still) exited.
 		 **/
-		AlreadyNoted: GenericPalletError<Rv>;
+		Exited: GenericPalletError<Rv>;
 		/**
-		 * The user is not authorized to perform this action.
+		 * This functionality of the pallet is disabled by the configuration.
 		 **/
-		NotAuthorized: GenericPalletError<Rv>;
+		NotConfigured: GenericPalletError<Rv>;
 		/**
-		 * The preimage cannot be removed since it has not yet been noted.
+		 * There is no balance reserved.
 		 **/
-		NotNoted: GenericPalletError<Rv>;
+		NoDeposit: GenericPalletError<Rv>;
 		/**
-		 * A preimage may not be removed when there are outstanding requests.
+		 * The account already has a deposit reserved and can therefore not enter or extend again.
 		 **/
-		Requested: GenericPalletError<Rv>;
+		AlreadyDeposited: GenericPalletError<Rv>;
 		/**
-		 * The preimage request cannot be removed since no outstanding requests exist.
+		 * This deposit cannot be released yet.
 		 **/
-		NotRequested: GenericPalletError<Rv>;
+		CannotReleaseYet: GenericPalletError<Rv>;
 		/**
-		 * More than `MAX_HASH_UPGRADE_BULK_COUNT` hashes were requested to be upgraded at once.
+		 * An error from the underlying `Currency`.
 		 **/
-		TooMany: GenericPalletError<Rv>;
-		/**
-		 * Too few hashes were requested to be upgraded (i.e. zero).
-		 **/
-		TooFew: GenericPalletError<Rv>;
+		CurrencyError: GenericPalletError<Rv>;
 		/**
 		 * Generic pallet error
 		 **/
@@ -5246,6 +5815,10 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		 **/
 		PendingMiddsNotFound: GenericPalletError<Rv>;
 		/**
+		 * Some data in the MIDDS aren't valid.
+		 **/
+		UnvalidMiddsData: GenericPalletError<Rv>;
+		/**
 		 * The lock-unregister period is still going.
 		 **/
 		UnregisterLocked: GenericPalletError<Rv>;
@@ -5262,7 +5835,8 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		 **/
 		CantHoldFunds: GenericPalletError<Rv>;
 		/**
-		 * The provider tried to register/update a MIDDS that exceed data size cost maximum authorized.
+		 * The provider tried to register/update a MIDDS that exceed data size cost maximum
+		 * authorized.
 		 **/
 		OverflowedAuthorizedDataCost: GenericPalletError<Rv>;
 		/**
@@ -5283,6 +5857,10 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		 **/
 		PendingMiddsNotFound: GenericPalletError<Rv>;
 		/**
+		 * Some data in the MIDDS aren't valid.
+		 **/
+		UnvalidMiddsData: GenericPalletError<Rv>;
+		/**
 		 * The lock-unregister period is still going.
 		 **/
 		UnregisterLocked: GenericPalletError<Rv>;
@@ -5299,7 +5877,8 @@ export interface ChainErrors<Rv extends RpcVersion> extends GenericChainErrors<R
 		 **/
 		CantHoldFunds: GenericPalletError<Rv>;
 		/**
-		 * The provider tried to register/update a MIDDS that exceed data size cost maximum authorized.
+		 * The provider tried to register/update a MIDDS that exceed data size cost maximum
+		 * authorized.
 		 **/
 		OverflowedAuthorizedDataCost: GenericPalletError<Rv>;
 		/**
@@ -5317,14 +5896,14 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 		 * An extrinsic completed successfully.
 		 **/
 		ExtrinsicSuccess: GenericPalletEvent<Rv, "System", "ExtrinsicSuccess", {
-			dispatchInfo: DispatchInfo;
+			dispatchInfo: FrameSystemDispatchEventInfo;
 		}>;
 		/**
 		 * An extrinsic failed.
 		 **/
 		ExtrinsicFailed: GenericPalletEvent<Rv, "System", "ExtrinsicFailed", {
 			dispatchError: DispatchError;
-			dispatchInfo: DispatchInfo;
+			dispatchInfo: FrameSystemDispatchEventInfo;
 		}>;
 		/**
 		 * `:code` was updated.
@@ -5374,6 +5953,48 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 		UpgradeAuthorized: GenericPalletEvent<Rv, "System", "UpgradeAuthorized", {
 			codeHash: H256;
 			checkVersion: boolean;
+		}>;
+		/**
+		 * Generic pallet event
+		 **/
+		[prop: string]: GenericPalletEvent<Rv>;
+	};
+	/**
+	 * Pallet `Utility`'s events
+	 **/
+	utility: {
+		/**
+		 * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
+		 * well as the error.
+		 **/
+		BatchInterrupted: GenericPalletEvent<Rv, "Utility", "BatchInterrupted", {
+			index: number;
+			error: DispatchError;
+		}>;
+		/**
+		 * Batch of dispatches completed fully with no error.
+		 **/
+		BatchCompleted: GenericPalletEvent<Rv, "Utility", "BatchCompleted", null>;
+		/**
+		 * Batch of dispatches completed but has errors.
+		 **/
+		BatchCompletedWithErrors: GenericPalletEvent<Rv, "Utility", "BatchCompletedWithErrors", null>;
+		/**
+		 * A single item within a Batch of dispatches has completed with no error.
+		 **/
+		ItemCompleted: GenericPalletEvent<Rv, "Utility", "ItemCompleted", null>;
+		/**
+		 * A single item within a Batch of dispatches has completed with error.
+		 **/
+		ItemFailed: GenericPalletEvent<Rv, "Utility", "ItemFailed", {
+			error: DispatchError;
+		}>;
+		/**
+		 * A call was dispatched.
+		 **/
+		DispatchedAs: GenericPalletEvent<Rv, "Utility", "DispatchedAs", {
+			result: Result<[
+			], DispatchError>;
 		}>;
 		/**
 		 * Generic pallet event
@@ -5546,27 +6167,17 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 		[prop: string]: GenericPalletEvent<Rv>;
 	};
 	/**
-	 * Pallet `ImOnline`'s events
+	 * Pallet `TransactionPayment`'s events
 	 **/
-	imOnline: {
+	transactionPayment: {
 		/**
-		 * A new heartbeat was received from `AuthorityId`.
+		 * A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
+		 * has been paid by `who`.
 		 **/
-		HeartbeatReceived: GenericPalletEvent<Rv, "ImOnline", "HeartbeatReceived", {
-			authorityId: PalletImOnlineSr25519AppSr25519Public;
-		}>;
-		/**
-		 * At the end of the session, no offence was committed.
-		 **/
-		AllGood: GenericPalletEvent<Rv, "ImOnline", "AllGood", null>;
-		/**
-		 * At the end of the session, at least one validator was found to be offline.
-		 **/
-		SomeOffline: GenericPalletEvent<Rv, "ImOnline", "SomeOffline", {
-			offline: Array<[
-				AccountId32,
-				AccountId32
-			]>;
+		TransactionFeePaid: GenericPalletEvent<Rv, "TransactionPayment", "TransactionFeePaid", {
+			who: AccountId32;
+			actualFee: bigint;
+			tip: bigint;
 		}>;
 		/**
 		 * Generic pallet event
@@ -5633,41 +6244,73 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 		[prop: string]: GenericPalletEvent<Rv>;
 	};
 	/**
-	 * Pallet `Utility`'s events
+	 * Pallet `Sudo`'s events
 	 **/
-	utility: {
+	sudo: {
 		/**
-		 * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
-		 * well as the error.
+		 * A sudo call just took place.
 		 **/
-		BatchInterrupted: GenericPalletEvent<Rv, "Utility", "BatchInterrupted", {
-			index: number;
-			error: DispatchError;
-		}>;
-		/**
-		 * Batch of dispatches completed fully with no error.
-		 **/
-		BatchCompleted: GenericPalletEvent<Rv, "Utility", "BatchCompleted", null>;
-		/**
-		 * Batch of dispatches completed but has errors.
-		 **/
-		BatchCompletedWithErrors: GenericPalletEvent<Rv, "Utility", "BatchCompletedWithErrors", null>;
-		/**
-		 * A single item within a Batch of dispatches has completed with no error.
-		 **/
-		ItemCompleted: GenericPalletEvent<Rv, "Utility", "ItemCompleted", null>;
-		/**
-		 * A single item within a Batch of dispatches has completed with error.
-		 **/
-		ItemFailed: GenericPalletEvent<Rv, "Utility", "ItemFailed", {
-			error: DispatchError;
-		}>;
-		/**
-		 * A call was dispatched.
-		 **/
-		DispatchedAs: GenericPalletEvent<Rv, "Utility", "DispatchedAs", {
-			result: Result<[
+		Sudid: GenericPalletEvent<Rv, "Sudo", "Sudid", {
+			/**
+			 * The result of the call made by the sudo user.
+			 **/
+			sudoResult: Result<[
 			], DispatchError>;
+		}>;
+		/**
+		 * The sudo key has been updated.
+		 **/
+		KeyChanged: GenericPalletEvent<Rv, "Sudo", "KeyChanged", {
+			/**
+			 * The old sudo key (if one was previously set).
+			 **/
+			old?: AccountId32 | undefined;
+			/**
+			 * The new sudo key (if one was set).
+			 **/
+			new: AccountId32;
+		}>;
+		/**
+		 * The key was permanently removed.
+		 **/
+		KeyRemoved: GenericPalletEvent<Rv, "Sudo", "KeyRemoved", null>;
+		/**
+		 * A [sudo_as](Pallet::sudo_as) call just took place.
+		 **/
+		SudoAsDone: GenericPalletEvent<Rv, "Sudo", "SudoAsDone", {
+			/**
+			 * The result of the call made by the sudo user.
+			 **/
+			sudoResult: Result<[
+			], DispatchError>;
+		}>;
+		/**
+		 * Generic pallet event
+		 **/
+		[prop: string]: GenericPalletEvent<Rv>;
+	};
+	/**
+	 * Pallet `ImOnline`'s events
+	 **/
+	imOnline: {
+		/**
+		 * A new heartbeat was received from `AuthorityId`.
+		 **/
+		HeartbeatReceived: GenericPalletEvent<Rv, "ImOnline", "HeartbeatReceived", {
+			authorityId: PalletImOnlineSr25519AppSr25519Public;
+		}>;
+		/**
+		 * At the end of the session, no offence was committed.
+		 **/
+		AllGood: GenericPalletEvent<Rv, "ImOnline", "AllGood", null>;
+		/**
+		 * At the end of the session, at least one validator was found to be offline.
+		 **/
+		SomeOffline: GenericPalletEvent<Rv, "ImOnline", "SomeOffline", {
+			offline: Array<[
+				AccountId32,
+				AccountId32
+			]>;
 		}>;
 		/**
 		 * Generic pallet event
@@ -5734,6 +6377,21 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 			deposit: bigint;
 		}>;
 		/**
+		 * An account's sub-identities were set (in bulk).
+		 **/
+		SubIdentitiesSet: GenericPalletEvent<Rv, "Identity", "SubIdentitiesSet", {
+			main: AccountId32;
+			numberOfSubs: number;
+			newDeposit: bigint;
+		}>;
+		/**
+		 * A given sub-account's associated name was changed by its super-identity.
+		 **/
+		SubIdentityRenamed: GenericPalletEvent<Rv, "Identity", "SubIdentityRenamed", {
+			sub: AccountId32;
+			main: AccountId32;
+		}>;
+		/**
 		 * A sub-identity was removed from an identity and the deposit freed.
 		 **/
 		SubIdentityRemoved: GenericPalletEvent<Rv, "Identity", "SubIdentityRemoved", {
@@ -5796,6 +6454,24 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 		 **/
 		DanglingUsernameRemoved: GenericPalletEvent<Rv, "Identity", "DanglingUsernameRemoved", {
 			who: AccountId32;
+			username: Bytes;
+		}>;
+		/**
+		 * A username has been unbound.
+		 **/
+		UsernameUnbound: GenericPalletEvent<Rv, "Identity", "UsernameUnbound", {
+			username: Bytes;
+		}>;
+		/**
+		 * A username has been removed.
+		 **/
+		UsernameRemoved: GenericPalletEvent<Rv, "Identity", "UsernameRemoved", {
+			username: Bytes;
+		}>;
+		/**
+		 * A username has been killed.
+		 **/
+		UsernameKilled: GenericPalletEvent<Rv, "Identity", "UsernameKilled", {
 			username: Bytes;
 		}>;
 		/**
@@ -5902,45 +6578,26 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 		[prop: string]: GenericPalletEvent<Rv>;
 	};
 	/**
-	 * Pallet `Sudo`'s events
+	 * Pallet `Preimage`'s events
 	 **/
-	sudo: {
+	preimage: {
 		/**
-		 * A sudo call just took place.
+		 * A preimage has been noted.
 		 **/
-		Sudid: GenericPalletEvent<Rv, "Sudo", "Sudid", {
-			/**
-			 * The result of the call made by the sudo user.
-			 **/
-			sudoResult: Result<[
-			], DispatchError>;
+		Noted: GenericPalletEvent<Rv, "Preimage", "Noted", {
+			hash: H256;
 		}>;
 		/**
-		 * The sudo key has been updated.
+		 * A preimage has been requested.
 		 **/
-		KeyChanged: GenericPalletEvent<Rv, "Sudo", "KeyChanged", {
-			/**
-			 * The old sudo key (if one was previously set).
-			 **/
-			old?: AccountId32 | undefined;
-			/**
-			 * The new sudo key (if one was set).
-			 **/
-			new: AccountId32;
+		Requested: GenericPalletEvent<Rv, "Preimage", "Requested", {
+			hash: H256;
 		}>;
 		/**
-		 * The key was permanently removed.
+		 * A preimage has ben cleared.
 		 **/
-		KeyRemoved: GenericPalletEvent<Rv, "Sudo", "KeyRemoved", null>;
-		/**
-		 * A [sudo_as](Pallet::sudo_as) call just took place.
-		 **/
-		SudoAsDone: GenericPalletEvent<Rv, "Sudo", "SudoAsDone", {
-			/**
-			 * The result of the call made by the sudo user.
-			 **/
-			sudoResult: Result<[
-			], DispatchError>;
+		Cleared: GenericPalletEvent<Rv, "Preimage", "Cleared", {
+			hash: H256;
 		}>;
 		/**
 		 * Generic pallet event
@@ -6046,45 +6703,60 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 		[prop: string]: GenericPalletEvent<Rv>;
 	};
 	/**
-	 * Pallet `TransactionPayment`'s events
+	 * Pallet `SafeMode`'s events
 	 **/
-	transactionPayment: {
+	safeMode: {
 		/**
-		 * A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
-		 * has been paid by `who`.
+		 * The safe-mode was entered until inclusively this block.
 		 **/
-		TransactionFeePaid: GenericPalletEvent<Rv, "TransactionPayment", "TransactionFeePaid", {
-			who: AccountId32;
-			actualFee: bigint;
-			tip: bigint;
+		Entered: GenericPalletEvent<Rv, "SafeMode", "Entered", {
+			until: number;
 		}>;
 		/**
-		 * Generic pallet event
+		 * The safe-mode was extended until inclusively this block.
 		 **/
-		[prop: string]: GenericPalletEvent<Rv>;
-	};
-	/**
-	 * Pallet `Preimage`'s events
-	 **/
-	preimage: {
-		/**
-		 * A preimage has been noted.
-		 **/
-		Noted: GenericPalletEvent<Rv, "Preimage", "Noted", {
-			hash: H256;
+		Extended: GenericPalletEvent<Rv, "SafeMode", "Extended", {
+			until: number;
 		}>;
 		/**
-		 * A preimage has been requested.
+		 * Exited the safe-mode for a specific reason.
 		 **/
-		Requested: GenericPalletEvent<Rv, "Preimage", "Requested", {
-			hash: H256;
+		Exited: GenericPalletEvent<Rv, "SafeMode", "Exited", {
+			reason: PalletSafeModeExitReason;
 		}>;
 		/**
-		 * A preimage has ben cleared.
+		 * An account reserved funds for either entering or extending the safe-mode.
 		 **/
-		Cleared: GenericPalletEvent<Rv, "Preimage", "Cleared", {
-			hash: H256;
+		DepositPlaced: GenericPalletEvent<Rv, "SafeMode", "DepositPlaced", {
+			account: AccountId32;
+			amount: bigint;
 		}>;
+		/**
+		 * An account had a reserve released that was reserved.
+		 **/
+		DepositReleased: GenericPalletEvent<Rv, "SafeMode", "DepositReleased", {
+			account: AccountId32;
+			amount: bigint;
+		}>;
+		/**
+		 * An account had reserve slashed that was reserved.
+		 **/
+		DepositSlashed: GenericPalletEvent<Rv, "SafeMode", "DepositSlashed", {
+			account: AccountId32;
+			amount: bigint;
+		}>;
+		/**
+		 * Could not hold funds for entering or extending the safe-mode.
+		 *
+		 * This error comes from the underlying `Currency`.
+		 **/
+		CannotDeposit: GenericPalletEvent<Rv, "SafeMode", "CannotDeposit", null>;
+		/**
+		 * Could not release funds for entering or extending the safe-mode.
+		 *
+		 * This error comes from the underlying `Currency`.
+		 **/
+		CannotRelease: GenericPalletEvent<Rv, "SafeMode", "CannotRelease", null>;
 		/**
 		 * Generic pallet event
 		 **/
@@ -6133,29 +6805,63 @@ export interface ChainEvents<Rv extends RpcVersion> extends GenericChainEvents<R
 }
 export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<Rv> {
 	/**
+	 * @runtimeapi: Core - 0xdf6acb689907609b
+	 **/
+	core: {
+		/**
+		 * Returns the version of the runtime.
+		 *
+		 * @callname: Core_version
+		 **/
+		version: GenericRuntimeApiMethod<Rv, () => Promise<RuntimeVersion>>;
+		/**
+		 * Execute the given block.
+		 *
+		 * @callname: Core_execute_block
+		 * @param {SpRuntimeBlock} block
+		 **/
+		executeBlock: GenericRuntimeApiMethod<Rv, (block: SpRuntimeBlock) => Promise<[
+		]>>;
+		/**
+		 * Initialize a block with the given header and return the runtime executive mode.
+		 *
+		 * @callname: Core_initialize_block
+		 * @param {Header} header
+		 **/
+		initializeBlock: GenericRuntimeApiMethod<Rv, (header: Header) => Promise<SpRuntimeExtrinsicInclusionMode>>;
+		/**
+		 * Generic runtime api call
+		 **/
+		[method: string]: GenericRuntimeApiMethod<Rv>;
+	};
+	/**
 	 * @runtimeapi: Metadata - 0x37e397fc7c91f5e4
-	 * @version: 2
 	 **/
 	metadata: {
-		/**
-		 * Returns the metadata at a given version.
-		 *
-		 * @callname: Metadata_metadata_at_version
-		 * @param {number} version
-		 **/
-		metadataAtVersion: GenericRuntimeApiMethod<Rv, (version: number) => Promise<Option<OpaqueMetadata>>>;
-		/**
-		 * Returns the supported metadata versions.
-		 *
-		 * @callname: Metadata_metadata_versions
-		 **/
-		metadataVersions: GenericRuntimeApiMethod<Rv, () => Promise<Array<number>>>;
 		/**
 		 * Returns the metadata of a runtime.
 		 *
 		 * @callname: Metadata_metadata
 		 **/
-		metadata: GenericRuntimeApiMethod<Rv, () => Promise<OpaqueMetadata>>;
+		metadata: GenericRuntimeApiMethod<Rv, () => Promise<SpCoreOpaqueMetadata>>;
+		/**
+		 * Returns the metadata at a given version.
+		 *
+		 * If the given `version` isn't supported, this will return `None`.
+		 * Use [`Self::metadata_versions`] to find out about supported metadata version of the runtime.
+		 *
+		 * @callname: Metadata_metadata_at_version
+		 * @param {number} version
+		 **/
+		metadataAtVersion: GenericRuntimeApiMethod<Rv, (version: number) => Promise<SpCoreOpaqueMetadata | undefined>>;
+		/**
+		 * Returns the supported metadata versions.
+		 *
+		 * This can be used to call `metadata_at_version`.
+		 *
+		 * @callname: Metadata_metadata_versions
+		 **/
+		metadataVersions: GenericRuntimeApiMethod<Rv, () => Promise<Array<number>>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6163,33 +6869,40 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: BlockBuilder - 0x40fe3ad401f8959a
-	 * @version: 6
 	 **/
 	blockBuilder: {
 		/**
+		 * Apply the given extrinsic.
+		 *
+		 * Returns an inclusion outcome which specifies if this extrinsic is included in
+		 * this block or not.
 		 *
 		 * @callname: BlockBuilder_apply_extrinsic
-		 * @param {OpaqueExtrinsicLike} extrinsic
+		 * @param {UncheckedExtrinsicLike} extrinsic
 		 **/
-		applyExtrinsic: GenericRuntimeApiMethod<Rv, (extrinsic: OpaqueExtrinsicLike) => Promise<ApplyExtrinsicResult>>;
+		applyExtrinsic: GenericRuntimeApiMethod<Rv, (extrinsic: UncheckedExtrinsicLike) => Promise<Result<Result<[
+		], DispatchError>, SpRuntimeTransactionValidityTransactionValidityError>>>;
 		/**
-		 *
-		 * @callname: BlockBuilder_check_inherents
-		 * @param {Block} block
-		 * @param {InherentData} data
-		 **/
-		checkInherents: GenericRuntimeApiMethod<Rv, (block: Block, data: InherentData) => Promise<CheckInherentsResult>>;
-		/**
-		 *
-		 * @callname: BlockBuilder_inherent_extrinsics
-		 * @param {InherentData} inherent
-		 **/
-		inherentExtrinsics: GenericRuntimeApiMethod<Rv, (inherent: InherentData) => Promise<Array<OpaqueExtrinsic>>>;
-		/**
+		 * Finish the current block.
 		 *
 		 * @callname: BlockBuilder_finalize_block
 		 **/
 		finalizeBlock: GenericRuntimeApiMethod<Rv, () => Promise<Header>>;
+		/**
+		 * Generate inherent extrinsics. The inherent data will vary from chain to chain.
+		 *
+		 * @callname: BlockBuilder_inherent_extrinsics
+		 * @param {SpInherentsInherentData} inherent
+		 **/
+		inherentExtrinsics: GenericRuntimeApiMethod<Rv, (inherent: SpInherentsInherentData) => Promise<Array<UncheckedExtrinsic>>>;
+		/**
+		 * Check that the inherents are valid. The inherent data will vary from chain to chain.
+		 *
+		 * @callname: BlockBuilder_check_inherents
+		 * @param {SpRuntimeBlock} block
+		 * @param {SpInherentsInherentData} data
+		 **/
+		checkInherents: GenericRuntimeApiMethod<Rv, (block: SpRuntimeBlock, data: SpInherentsInherentData) => Promise<SpInherentsCheckInherentsResult>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6197,18 +6910,25 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: TaggedTransactionQueue - 0xd2bc9897eed08f15
-	 * @version: 3
 	 **/
 	taggedTransactionQueue: {
 		/**
 		 * Validate the transaction.
 		 *
+		 * This method is invoked by the transaction pool to learn details about given transaction.
+		 * The implementation should make sure to verify the correctness of the transaction
+		 * against current state. The given `block_hash` corresponds to the hash of the block
+		 * that is used as current state.
+		 *
+		 * Note that this call may be performed by the pool multiple times and transactions
+		 * might be verified in any possible order.
+		 *
 		 * @callname: TaggedTransactionQueue_validate_transaction
-		 * @param {TransactionSource} source
-		 * @param {OpaqueExtrinsicLike} tx
-		 * @param {BlockHash} blockHash
+		 * @param {SpRuntimeTransactionValidityTransactionSource} source
+		 * @param {UncheckedExtrinsicLike} tx
+		 * @param {H256} block_hash
 		 **/
-		validateTransaction: GenericRuntimeApiMethod<Rv, (source: TransactionSource, tx: OpaqueExtrinsicLike, blockHash: BlockHash) => Promise<TransactionValidity>>;
+		validateTransaction: GenericRuntimeApiMethod<Rv, (source: SpRuntimeTransactionValidityTransactionSource, tx: UncheckedExtrinsicLike, blockHash: H256) => Promise<Result<SpRuntimeTransactionValidityValidTransaction, SpRuntimeTransactionValidityTransactionValidityError>>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6216,7 +6936,6 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: OffchainWorkerApi - 0xf78b278be53f454c
-	 * @version: 2
 	 **/
 	offchainWorkerApi: {
 		/**
@@ -6234,15 +6953,8 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: GrandpaApi - 0xed99c5acb25eedf5
-	 * @version: 3
 	 **/
 	grandpaApi: {
-		/**
-		 * Get current GRANDPA authority set id.
-		 *
-		 * @callname: GrandpaApi_current_set_id
-		 **/
-		currentSetId: GenericRuntimeApiMethod<Rv, () => Promise<SetId>>;
 		/**
 		 * Get the current GRANDPA authorities and weights. This should not change except
 		 * for when changes are scheduled and the corresponding delay has passed.
@@ -6251,11 +6963,28 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 		 * used to finalize descendants of this block (B+1, B+2, ...). The block B itself
 		 * is finalized by the authorities from block B-1.
 		 *
-		 * @callname: GrandpaApi_generate_key_ownership_proof
-		 * @param {SetId} setId
-		 * @param {AccountId32Like} authorityId
+		 * @callname: GrandpaApi_grandpa_authorities
 		 **/
-		generateKeyOwnershipProof: GenericRuntimeApiMethod<Rv, (setId: SetId, authorityId: AccountId32Like) => Promise<Option<OpaqueKeyOwnershipProof>>>;
+		grandpaAuthorities: GenericRuntimeApiMethod<Rv, () => Promise<Array<[
+			SpConsensusGrandpaAppPublic,
+			bigint
+		]>>>;
+		/**
+		 * Submits an unsigned extrinsic to report an equivocation. The caller
+		 * must provide the equivocation proof and a key ownership proof
+		 * (should be obtained using `generate_key_ownership_proof`). The
+		 * extrinsic will be unsigned and should only be accepted for local
+		 * authorship (not to be broadcast to the network). This method returns
+		 * `None` when creation of the extrinsic fails, e.g. if equivocation
+		 * reporting is disabled for the given runtime (i.e. this method is
+		 * hardcoded to return `None`). Only useful in an offchain context.
+		 *
+		 * @callname: GrandpaApi_submit_report_equivocation_unsigned_extrinsic
+		 * @param {SpConsensusGrandpaEquivocationProof} equivocation_proof
+		 * @param {SpRuntimeOpaqueValue} key_owner_proof
+		 **/
+		submitReportEquivocationUnsignedExtrinsic: GenericRuntimeApiMethod<Rv, (equivocationProof: SpConsensusGrandpaEquivocationProof, keyOwnerProof: SpRuntimeOpaqueValue) => Promise<[
+		] | undefined>>;
 		/**
 		 * Generates a proof of key ownership for the given authority in the
 		 * given set. An example usage of this module is coupled with the
@@ -6269,25 +6998,17 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 		 * instead use indexed data through an offchain worker, not requiring
 		 * older states to be available.
 		 *
-		 * @callname: GrandpaApi_grandpa_authorities
+		 * @callname: GrandpaApi_generate_key_ownership_proof
+		 * @param {bigint} set_id
+		 * @param {SpConsensusGrandpaAppPublic} authority_id
 		 **/
-		grandpaAuthorities: GenericRuntimeApiMethod<Rv, () => Promise<AuthorityList>>;
+		generateKeyOwnershipProof: GenericRuntimeApiMethod<Rv, (setId: bigint, authorityId: SpConsensusGrandpaAppPublic) => Promise<SpRuntimeOpaqueValue | undefined>>;
 		/**
-		 * Submits an unsigned extrinsic to report an equivocation. The caller
-		 * must provide the equivocation proof and a key ownership proof
-		 * (should be obtained using `generate_key_ownership_proof`). The
-		 * extrinsic will be unsigned and should only be accepted for local
-		 * authorship (not to be broadcast to the network). This method returns
-		 * `None` when creation of the extrinsic fails, e.g. if equivocation
-		 * reporting is disabled for the given runtime (i.e. this method is
-		 * hardcoded to return `None`). Only useful in an offchain context.
+		 * Get current GRANDPA authority set id.
 		 *
-		 * @callname: GrandpaApi_submit_report_equivocation_unsigned_extrinsic
-		 * @param {GrandpaEquivocationProof} equivocationProof
-		 * @param {OpaqueKeyOwnershipProof} keyOwnerProof
+		 * @callname: GrandpaApi_current_set_id
 		 **/
-		submitReportEquivocationUnsignedExtrinsic: GenericRuntimeApiMethod<Rv, (equivocationProof: GrandpaEquivocationProof, keyOwnerProof: OpaqueKeyOwnershipProof) => Promise<Option<[
-		]>>>;
+		currentSetId: GenericRuntimeApiMethod<Rv, () => Promise<bigint>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6295,7 +7016,6 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: BabeApi - 0xcbca25e39f142387
-	 * @version: 2
 	 **/
 	babeApi: {
 		/**
@@ -6303,25 +7023,26 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 		 *
 		 * @callname: BabeApi_configuration
 		 **/
-		configuration: GenericRuntimeApiMethod<Rv, () => Promise<BabeConfiguration>>;
-		/**
-		 * Returns information regarding the current epoch.
-		 *
-		 * @callname: BabeApi_current_epoch
-		 **/
-		currentEpoch: GenericRuntimeApiMethod<Rv, () => Promise<BabeEpoch>>;
+		configuration: GenericRuntimeApiMethod<Rv, () => Promise<SpConsensusBabeBabeConfiguration>>;
 		/**
 		 * Returns the slot that started the current epoch.
 		 *
 		 * @callname: BabeApi_current_epoch_start
 		 **/
-		currentEpochStart: GenericRuntimeApiMethod<Rv, () => Promise<Slot>>;
+		currentEpochStart: GenericRuntimeApiMethod<Rv, () => Promise<SpConsensusSlotsSlot>>;
 		/**
-		 * Returns information regarding the next epoch (which was already previously announced).
+		 * Returns information regarding the current epoch.
+		 *
+		 * @callname: BabeApi_current_epoch
+		 **/
+		currentEpoch: GenericRuntimeApiMethod<Rv, () => Promise<SpConsensusBabeEpoch>>;
+		/**
+		 * Returns information regarding the next epoch (which was already
+		 * previously announced).
 		 *
 		 * @callname: BabeApi_next_epoch
 		 **/
-		nextEpoch: GenericRuntimeApiMethod<Rv, () => Promise<BabeEpoch>>;
+		nextEpoch: GenericRuntimeApiMethod<Rv, () => Promise<SpConsensusBabeEpoch>>;
 		/**
 		 * Generates a proof of key ownership for the given authority in the
 		 * current epoch. An example usage of this module is coupled with the
@@ -6336,10 +7057,10 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 		 * worker, not requiring older states to be available.
 		 *
 		 * @callname: BabeApi_generate_key_ownership_proof
-		 * @param {Slot} slot
-		 * @param {AccountId32Like} authorityId
+		 * @param {SpConsensusSlotsSlot} slot
+		 * @param {SpConsensusBabeAppPublic} authority_id
 		 **/
-		generateKeyOwnershipProof: GenericRuntimeApiMethod<Rv, (slot: Slot, authorityId: AccountId32Like) => Promise<Option<OpaqueKeyOwnershipProof>>>;
+		generateKeyOwnershipProof: GenericRuntimeApiMethod<Rv, (slot: SpConsensusSlotsSlot, authorityId: SpConsensusBabeAppPublic) => Promise<SpConsensusBabeOpaqueKeyOwnershipProof | undefined>>;
 		/**
 		 * Submits an unsigned extrinsic to report an equivocation. The caller
 		 * must provide the equivocation proof and a key ownership proof
@@ -6351,11 +7072,11 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 		 * hardcoded to return `None`). Only useful in an offchain context.
 		 *
 		 * @callname: BabeApi_submit_report_equivocation_unsigned_extrinsic
-		 * @param {BabeEquivocationProof} equivocationProof
-		 * @param {OpaqueKeyOwnershipProof} keyOwnerProof
+		 * @param {SpConsensusSlotsEquivocationProof} equivocation_proof
+		 * @param {SpConsensusBabeOpaqueKeyOwnershipProof} key_owner_proof
 		 **/
-		submitReportEquivocationUnsignedExtrinsic: GenericRuntimeApiMethod<Rv, (equivocationProof: BabeEquivocationProof, keyOwnerProof: OpaqueKeyOwnershipProof) => Promise<Option<[
-		]>>>;
+		submitReportEquivocationUnsignedExtrinsic: GenericRuntimeApiMethod<Rv, (equivocationProof: SpConsensusSlotsEquivocationProof, keyOwnerProof: SpConsensusBabeOpaqueKeyOwnershipProof) => Promise<[
+		] | undefined>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6363,7 +7084,6 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: AuthorityDiscoveryApi - 0x687ad44ad37f03c2
-	 * @version: 1
 	 **/
 	authorityDiscoveryApi: {
 		/**
@@ -6371,7 +7091,7 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 		 *
 		 * @callname: AuthorityDiscoveryApi_authorities
 		 **/
-		authorities: GenericRuntimeApiMethod<Rv, () => Promise<Array<AccountId32>>>;
+		authorities: GenericRuntimeApiMethod<Rv, () => Promise<Array<SpAuthorityDiscoveryAppPublic>>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6379,16 +7099,15 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: AccountNonceApi - 0xbc9d89904f5b923f
-	 * @version: 1
 	 **/
 	accountNonceApi: {
 		/**
-		 * The API to query account nonce (aka transaction index)
+		 * Get current account nonce of given `AccountId`.
 		 *
 		 * @callname: AccountNonceApi_account_nonce
-		 * @param {AccountId32Like} accountId
+		 * @param {AccountId32Like} account
 		 **/
-		accountNonce: GenericRuntimeApiMethod<Rv, (accountId: AccountId32Like) => Promise<Nonce>>;
+		accountNonce: GenericRuntimeApiMethod<Rv, (account: AccountId32Like) => Promise<number>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6396,39 +7115,34 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: TransactionPaymentApi - 0x37c8bb1350a9a2a8
-	 * @version: 4
 	 **/
 	transactionPaymentApi: {
 		/**
-		 * The transaction info
 		 *
 		 * @callname: TransactionPaymentApi_query_info
-		 * @param {OpaqueExtrinsicLike} uxt
+		 * @param {UncheckedExtrinsicLike} uxt
 		 * @param {number} len
 		 **/
-		queryInfo: GenericRuntimeApiMethod<Rv, (uxt: OpaqueExtrinsicLike, len: number) => Promise<RuntimeDispatchInfo>>;
+		queryInfo: GenericRuntimeApiMethod<Rv, (uxt: UncheckedExtrinsicLike, len: number) => Promise<PalletTransactionPaymentRuntimeDispatchInfo>>;
 		/**
-		 * The transaction fee details
 		 *
 		 * @callname: TransactionPaymentApi_query_fee_details
-		 * @param {OpaqueExtrinsicLike} uxt
+		 * @param {UncheckedExtrinsicLike} uxt
 		 * @param {number} len
 		 **/
-		queryFeeDetails: GenericRuntimeApiMethod<Rv, (uxt: OpaqueExtrinsicLike, len: number) => Promise<FeeDetails>>;
+		queryFeeDetails: GenericRuntimeApiMethod<Rv, (uxt: UncheckedExtrinsicLike, len: number) => Promise<PalletTransactionPaymentFeeDetails>>;
 		/**
-		 * Query the output of the current LengthToFee given some input
+		 *
+		 * @callname: TransactionPaymentApi_query_weight_to_fee
+		 * @param {SpWeightsWeightV2Weight} weight
+		 **/
+		queryWeightToFee: GenericRuntimeApiMethod<Rv, (weight: SpWeightsWeightV2Weight) => Promise<bigint>>;
+		/**
 		 *
 		 * @callname: TransactionPaymentApi_query_length_to_fee
 		 * @param {number} length
 		 **/
-		queryLengthToFee: GenericRuntimeApiMethod<Rv, (length: number) => Promise<Balance>>;
-		/**
-		 * Query the output of the current WeightToFee given some input
-		 *
-		 * @callname: TransactionPaymentApi_query_weight_to_fee
-		 * @param {Weight} weight
-		 **/
-		queryWeightToFee: GenericRuntimeApiMethod<Rv, (weight: Weight) => Promise<Balance>>;
+		queryLengthToFee: GenericRuntimeApiMethod<Rv, (length: number) => Promise<bigint>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6436,39 +7150,38 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: TransactionPaymentCallApi - 0xf3ff14d5ab527059
-	 * @version: 3
 	 **/
 	transactionPaymentCallApi: {
 		/**
 		 * Query information of a dispatch class, weight, and fee of a given encoded `Call`.
 		 *
 		 * @callname: TransactionPaymentCallApi_query_call_info
-		 * @param {RawBytesLike} call
+		 * @param {MelodieRuntimeRuntimeCallLike} call
 		 * @param {number} len
 		 **/
-		queryCallInfo: GenericRuntimeApiMethod<Rv, (call: RawBytesLike, len: number) => Promise<RuntimeDispatchInfo>>;
+		queryCallInfo: GenericRuntimeApiMethod<Rv, (call: MelodieRuntimeRuntimeCallLike, len: number) => Promise<PalletTransactionPaymentRuntimeDispatchInfo>>;
 		/**
 		 * Query fee details of a given encoded `Call`.
 		 *
 		 * @callname: TransactionPaymentCallApi_query_call_fee_details
-		 * @param {RawBytesLike} call
+		 * @param {MelodieRuntimeRuntimeCallLike} call
 		 * @param {number} len
 		 **/
-		queryCallFeeDetails: GenericRuntimeApiMethod<Rv, (call: RawBytesLike, len: number) => Promise<FeeDetails>>;
+		queryCallFeeDetails: GenericRuntimeApiMethod<Rv, (call: MelodieRuntimeRuntimeCallLike, len: number) => Promise<PalletTransactionPaymentFeeDetails>>;
 		/**
-		 * Query the output of the current LengthToFee given some input
+		 * Query the output of the current `WeightToFee` given some input.
+		 *
+		 * @callname: TransactionPaymentCallApi_query_weight_to_fee
+		 * @param {SpWeightsWeightV2Weight} weight
+		 **/
+		queryWeightToFee: GenericRuntimeApiMethod<Rv, (weight: SpWeightsWeightV2Weight) => Promise<bigint>>;
+		/**
+		 * Query the output of the current `LengthToFee` given some input.
 		 *
 		 * @callname: TransactionPaymentCallApi_query_length_to_fee
 		 * @param {number} length
 		 **/
-		queryLengthToFee: GenericRuntimeApiMethod<Rv, (length: number) => Promise<Balance>>;
-		/**
-		 * Query the output of the current WeightToFee given some input
-		 *
-		 * @callname: TransactionPaymentCallApi_query_weight_to_fee
-		 * @param {Weight} weight
-		 **/
-		queryWeightToFee: GenericRuntimeApiMethod<Rv, (weight: Weight) => Promise<Balance>>;
+		queryLengthToFee: GenericRuntimeApiMethod<Rv, (length: number) => Promise<bigint>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6476,7 +7189,6 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: SessionKeys - 0xab3c0572291feb8b
-	 * @version: 1
 	 **/
 	sessionKeys: {
 		/**
@@ -6489,21 +7201,21 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 		 * Returns the concatenated SCALE encoded public keys.
 		 *
 		 * @callname: SessionKeys_generate_session_keys
-		 * @param {Option<BytesLike>} seed
+		 * @param {BytesLike | undefined} seed
 		 **/
-		generateSessionKeys: GenericRuntimeApiMethod<Rv, (seed?: Option<BytesLike>) => Promise<Bytes>>;
+		generateSessionKeys: GenericRuntimeApiMethod<Rv, (seed?: BytesLike | undefined) => Promise<Bytes>>;
 		/**
-		 * Decode the given public session key
+		 * Decode the given public session keys.
 		 *
-		 * Returns the list of public raw public keys + key typ
+		 * Returns the list of public raw public keys + key type.
 		 *
 		 * @callname: SessionKeys_decode_session_keys
 		 * @param {BytesLike} encoded
 		 **/
-		decodeSessionKeys: GenericRuntimeApiMethod<Rv, (encoded: BytesLike) => Promise<Option<Array<[
+		decodeSessionKeys: GenericRuntimeApiMethod<Rv, (encoded: BytesLike) => Promise<Array<[
 			Bytes,
-			KeyTypeId
-		]>>>>;
+			SpCoreCryptoKeyTypeId
+		]> | undefined>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6511,32 +7223,54 @@ export interface RuntimeApis<Rv extends RpcVersion> extends GenericRuntimeApis<R
 	};
 	/**
 	 * @runtimeapi: GenesisBuilder - 0xfbc577b9d747efd6
-	 * @version: 1
 	 **/
 	genesisBuilder: {
 		/**
-		 * Creates the default `GenesisConfig` and returns it as a JSON blob.
+		 * Build `RuntimeGenesisConfig` from a JSON blob not using any defaults and store it in the
+		 * storage.
 		 *
-		 * This function instantiates the default `GenesisConfig` struct for the runtime and serializes it into a JSON
-		 * blob. It returns a `Vec<u8>` containing the JSON representation of the default `GenesisConfig`.
+		 * In the case of a FRAME-based runtime, this function deserializes the full
+		 * `RuntimeGenesisConfig` from the given JSON blob and puts it into the storage. If the
+		 * provided JSON blob is incorrect or incomplete or the deserialization fails, an error
+		 * is returned.
 		 *
-		 * @callname: GenesisBuilder_create_default_config
-		 **/
-		createDefaultConfig: GenericRuntimeApiMethod<Rv, () => Promise<Bytes>>;
-		/**
-		 * Build `GenesisConfig` from a JSON blob not using any defaults and store it in the storage.
+		 * Please note that provided JSON blob must contain all `RuntimeGenesisConfig` fields, no
+		 * defaults will be used.
 		 *
-		 * This function deserializes the full `GenesisConfig` from the given JSON blob and puts it into the storage.
-		 * If the provided JSON blob is incorrect or incomplete or the deserialization fails, an error is returned.
-		 * It is recommended to log any errors encountered during the process.
-		 *
-		 * Please note that provided json blob must contain all `GenesisConfig` fields, no defaults will be used.
-		 *
-		 * @callname: GenesisBuilder_build_config
+		 * @callname: GenesisBuilder_build_state
 		 * @param {BytesLike} json
 		 **/
-		buildConfig: GenericRuntimeApiMethod<Rv, (json: BytesLike) => Promise<Result<[
-		], Text>>>;
+		buildState: GenericRuntimeApiMethod<Rv, (json: BytesLike) => Promise<Result<[
+		], string>>>;
+		/**
+		 * Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by
+		 * `id`.
+		 *
+		 * If `id` is `None` the function should return JSON blob representation of the default
+		 * `RuntimeGenesisConfig` struct of the runtime. Implementation must provide default
+		 * `RuntimeGenesisConfig`.
+		 *
+		 * Otherwise function returns a JSON representation of the built-in, named
+		 * `RuntimeGenesisConfig` preset identified by `id`, or `None` if such preset does not
+		 * exist. Returned `Vec<u8>` contains bytes of JSON blob (patch) which comprises a list of
+		 * (potentially nested) key-value pairs that are intended for customizing the default
+		 * runtime genesis config. The patch shall be merged (rfc7386) with the JSON representation
+		 * of the default `RuntimeGenesisConfig` to create a comprehensive genesis config that can
+		 * be used in `build_state` method.
+		 *
+		 * @callname: GenesisBuilder_get_preset
+		 * @param {string | undefined} id
+		 **/
+		getPreset: GenericRuntimeApiMethod<Rv, (id?: string | undefined) => Promise<Bytes | undefined>>;
+		/**
+		 * Returns a list of identifiers for available builtin `RuntimeGenesisConfig` presets.
+		 *
+		 * The presets from the list can be queried with [`GenesisBuilder::get_preset`] method. If
+		 * no named presets are provided by the runtime the list is empty.
+		 *
+		 * @callname: GenesisBuilder_preset_names
+		 **/
+		presetNames: GenericRuntimeApiMethod<Rv, () => Promise<Array<string>>>;
 		/**
 		 * Generic runtime api call
 		 **/
@@ -6757,6 +7491,277 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
 	};
 	/**
+	 * Pallet `Utility`'s transaction calls
+	 **/
+	utility: {
+		/**
+		 * Send a batch of dispatch calls.
+		 *
+		 * May be called from any origin except `None`.
+		 *
+		 * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+		 * exceed the constant: `batched_calls_limit` (available in constant metadata).
+		 *
+		 * If origin is root then the calls are dispatched without checking origin filter. (This
+		 * includes bypassing `frame_system::Config::BaseCallFilter`).
+		 *
+		 * ## Complexity
+		 * - O(C) where C is the number of calls to be batched.
+		 *
+		 * This will return `Ok` in all circumstances. To determine the success of the batch, an
+		 * event is deposited. If a call failed and the batch was interrupted, then the
+		 * `BatchInterrupted` event is deposited, along with the number of successful calls made
+		 * and the error of the failed call. If all were successful, then the `BatchCompleted`
+		 * event is deposited.
+		 *
+		 * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
+		 **/
+		batch: GenericTxCall<Rv, (calls: Array<MelodieRuntimeRuntimeCallLike>) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Utility";
+			palletCall: {
+				name: "Batch";
+				params: {
+					calls: Array<MelodieRuntimeRuntimeCallLike>;
+				};
+			};
+		}>>;
+		/**
+		 * Send a call through an indexed pseudonym of the sender.
+		 *
+		 * Filter from origin are passed along. The call will be dispatched with an origin which
+		 * use the same filter as the origin of this call.
+		 *
+		 * NOTE: If you need to ensure that any account-based filtering is not honored (i.e.
+		 * because you expect `proxy` to have been used prior in the call stack and you do not want
+		 * the call restrictions to apply to any sub-accounts), then use `as_multi_threshold_1`
+		 * in the Multisig pallet instead.
+		 *
+		 * NOTE: Prior to version *12, this was called `as_limited_sub`.
+		 *
+		 * The dispatch origin for this call must be _Signed_.
+		 *
+		 * @param {number} index
+		 * @param {MelodieRuntimeRuntimeCallLike} call
+		 **/
+		asDerivative: GenericTxCall<Rv, (index: number, call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Utility";
+			palletCall: {
+				name: "AsDerivative";
+				params: {
+					index: number;
+					call: MelodieRuntimeRuntimeCallLike;
+				};
+			};
+		}>>;
+		/**
+		 * Send a batch of dispatch calls and atomically execute them.
+		 * The whole transaction will rollback and fail if any of the calls failed.
+		 *
+		 * May be called from any origin except `None`.
+		 *
+		 * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+		 * exceed the constant: `batched_calls_limit` (available in constant metadata).
+		 *
+		 * If origin is root then the calls are dispatched without checking origin filter. (This
+		 * includes bypassing `frame_system::Config::BaseCallFilter`).
+		 *
+		 * ## Complexity
+		 * - O(C) where C is the number of calls to be batched.
+		 *
+		 * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
+		 **/
+		batchAll: GenericTxCall<Rv, (calls: Array<MelodieRuntimeRuntimeCallLike>) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Utility";
+			palletCall: {
+				name: "BatchAll";
+				params: {
+					calls: Array<MelodieRuntimeRuntimeCallLike>;
+				};
+			};
+		}>>;
+		/**
+		 * Dispatches a function call with a provided origin.
+		 *
+		 * The dispatch origin for this call must be _Root_.
+		 *
+		 * ## Complexity
+		 * - O(1).
+		 *
+		 * @param {MelodieRuntimeOriginCaller} asOrigin
+		 * @param {MelodieRuntimeRuntimeCallLike} call
+		 **/
+		dispatchAs: GenericTxCall<Rv, (asOrigin: MelodieRuntimeOriginCaller, call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Utility";
+			palletCall: {
+				name: "DispatchAs";
+				params: {
+					asOrigin: MelodieRuntimeOriginCaller;
+					call: MelodieRuntimeRuntimeCallLike;
+				};
+			};
+		}>>;
+		/**
+		 * Send a batch of dispatch calls.
+		 * Unlike `batch`, it allows errors and won't interrupt.
+		 *
+		 * May be called from any origin except `None`.
+		 *
+		 * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+		 * exceed the constant: `batched_calls_limit` (available in constant metadata).
+		 *
+		 * If origin is root then the calls are dispatch without checking origin filter. (This
+		 * includes bypassing `frame_system::Config::BaseCallFilter`).
+		 *
+		 * ## Complexity
+		 * - O(C) where C is the number of calls to be batched.
+		 *
+		 * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
+		 **/
+		forceBatch: GenericTxCall<Rv, (calls: Array<MelodieRuntimeRuntimeCallLike>) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Utility";
+			palletCall: {
+				name: "ForceBatch";
+				params: {
+					calls: Array<MelodieRuntimeRuntimeCallLike>;
+				};
+			};
+		}>>;
+		/**
+		 * Dispatch a function call with a specified weight.
+		 *
+		 * This function does not check the weight of the call, and instead allows the
+		 * Root origin to specify the weight of the call.
+		 *
+		 * The dispatch origin for this call must be _Root_.
+		 *
+		 * @param {MelodieRuntimeRuntimeCallLike} call
+		 * @param {SpWeightsWeightV2Weight} weight
+		 **/
+		withWeight: GenericTxCall<Rv, (call: MelodieRuntimeRuntimeCallLike, weight: SpWeightsWeightV2Weight) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Utility";
+			palletCall: {
+				name: "WithWeight";
+				params: {
+					call: MelodieRuntimeRuntimeCallLike;
+					weight: SpWeightsWeightV2Weight;
+				};
+			};
+		}>>;
+		/**
+		 * Generic pallet tx call
+		 **/
+		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
+	};
+	/**
+	 * Pallet `Babe`'s transaction calls
+	 **/
+	babe: {
+		/**
+		 * Report authority equivocation/misbehavior. This method will verify
+		 * the equivocation proof and validate the given key ownership proof
+		 * against the extracted offender. If both are valid, the offence will
+		 * be reported.
+		 *
+		 * @param {SpConsensusSlotsEquivocationProof} equivocationProof
+		 * @param {SpSessionMembershipProof} keyOwnerProof
+		 **/
+		reportEquivocation: GenericTxCall<Rv, (equivocationProof: SpConsensusSlotsEquivocationProof, keyOwnerProof: SpSessionMembershipProof) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Babe";
+			palletCall: {
+				name: "ReportEquivocation";
+				params: {
+					equivocationProof: SpConsensusSlotsEquivocationProof;
+					keyOwnerProof: SpSessionMembershipProof;
+				};
+			};
+		}>>;
+		/**
+		 * Report authority equivocation/misbehavior. This method will verify
+		 * the equivocation proof and validate the given key ownership proof
+		 * against the extracted offender. If both are valid, the offence will
+		 * be reported.
+		 * This extrinsic must be called unsigned and it is expected that only
+		 * block authors will call it (validated in `ValidateUnsigned`), as such
+		 * if the block author is defined it will be defined as the equivocation
+		 * reporter.
+		 *
+		 * @param {SpConsensusSlotsEquivocationProof} equivocationProof
+		 * @param {SpSessionMembershipProof} keyOwnerProof
+		 **/
+		reportEquivocationUnsigned: GenericTxCall<Rv, (equivocationProof: SpConsensusSlotsEquivocationProof, keyOwnerProof: SpSessionMembershipProof) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Babe";
+			palletCall: {
+				name: "ReportEquivocationUnsigned";
+				params: {
+					equivocationProof: SpConsensusSlotsEquivocationProof;
+					keyOwnerProof: SpSessionMembershipProof;
+				};
+			};
+		}>>;
+		/**
+		 * Plan an epoch config change. The epoch config change is recorded and will be enacted on
+		 * the next call to `enact_epoch_change`. The config will be activated one epoch after.
+		 * Multiple calls to this method will replace any existing planned config change that had
+		 * not been enacted yet.
+		 *
+		 * @param {SpConsensusBabeDigestsNextConfigDescriptor} config
+		 **/
+		planConfigChange: GenericTxCall<Rv, (config: SpConsensusBabeDigestsNextConfigDescriptor) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Babe";
+			palletCall: {
+				name: "PlanConfigChange";
+				params: {
+					config: SpConsensusBabeDigestsNextConfigDescriptor;
+				};
+			};
+		}>>;
+		/**
+		 * Generic pallet tx call
+		 **/
+		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
+	};
+	/**
+	 * Pallet `Timestamp`'s transaction calls
+	 **/
+	timestamp: {
+		/**
+		 * Set the current time.
+		 *
+		 * This call should be invoked exactly once per block. It will panic at the finalization
+		 * phase, if this call hasn't been invoked by that time.
+		 *
+		 * The timestamp should be greater than the previous one by the amount specified by
+		 * [`Config::MinimumPeriod`].
+		 *
+		 * The dispatch origin for this call must be _None_.
+		 *
+		 * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
+		 * that changing the complexity of this call could result exhausting the resources in a
+		 * block to execute any other calls.
+		 *
+		 * ## Complexity
+		 * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
+		 * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
+		 * `on_finalize`)
+		 * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
+		 *
+		 * @param {bigint} now
+		 **/
+		set: GenericTxCall<Rv, (now: bigint) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Timestamp";
+			palletCall: {
+				name: "Set";
+				params: {
+					now: bigint;
+				};
+			};
+		}>>;
+		/**
+		 * Generic pallet tx call
+		 **/
+		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
+	};
+	/**
 	 * Pallet `Balances`'s transaction calls
 	 **/
 	balances: {
@@ -6957,142 +7962,6 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
 	};
 	/**
-	 * Pallet `Babe`'s transaction calls
-	 **/
-	babe: {
-		/**
-		 * Report authority equivocation/misbehavior. This method will verify
-		 * the equivocation proof and validate the given key ownership proof
-		 * against the extracted offender. If both are valid, the offence will
-		 * be reported.
-		 *
-		 * @param {SpConsensusSlotsEquivocationProof} equivocationProof
-		 * @param {SpSessionMembershipProof} keyOwnerProof
-		 **/
-		reportEquivocation: GenericTxCall<Rv, (equivocationProof: SpConsensusSlotsEquivocationProof, keyOwnerProof: SpSessionMembershipProof) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Babe";
-			palletCall: {
-				name: "ReportEquivocation";
-				params: {
-					equivocationProof: SpConsensusSlotsEquivocationProof;
-					keyOwnerProof: SpSessionMembershipProof;
-				};
-			};
-		}>>;
-		/**
-		 * Report authority equivocation/misbehavior. This method will verify
-		 * the equivocation proof and validate the given key ownership proof
-		 * against the extracted offender. If both are valid, the offence will
-		 * be reported.
-		 * This extrinsic must be called unsigned and it is expected that only
-		 * block authors will call it (validated in `ValidateUnsigned`), as such
-		 * if the block author is defined it will be defined as the equivocation
-		 * reporter.
-		 *
-		 * @param {SpConsensusSlotsEquivocationProof} equivocationProof
-		 * @param {SpSessionMembershipProof} keyOwnerProof
-		 **/
-		reportEquivocationUnsigned: GenericTxCall<Rv, (equivocationProof: SpConsensusSlotsEquivocationProof, keyOwnerProof: SpSessionMembershipProof) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Babe";
-			palletCall: {
-				name: "ReportEquivocationUnsigned";
-				params: {
-					equivocationProof: SpConsensusSlotsEquivocationProof;
-					keyOwnerProof: SpSessionMembershipProof;
-				};
-			};
-		}>>;
-		/**
-		 * Plan an epoch config change. The epoch config change is recorded and will be enacted on
-		 * the next call to `enact_epoch_change`. The config will be activated one epoch after.
-		 * Multiple calls to this method will replace any existing planned config change that had
-		 * not been enacted yet.
-		 *
-		 * @param {SpConsensusBabeDigestsNextConfigDescriptor} config
-		 **/
-		planConfigChange: GenericTxCall<Rv, (config: SpConsensusBabeDigestsNextConfigDescriptor) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Babe";
-			palletCall: {
-				name: "PlanConfigChange";
-				params: {
-					config: SpConsensusBabeDigestsNextConfigDescriptor;
-				};
-			};
-		}>>;
-		/**
-		 * Generic pallet tx call
-		 **/
-		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
-	};
-	/**
-	 * Pallet `Timestamp`'s transaction calls
-	 **/
-	timestamp: {
-		/**
-		 * Set the current time.
-		 *
-		 * This call should be invoked exactly once per block. It will panic at the finalization
-		 * phase, if this call hasn't been invoked by that time.
-		 *
-		 * The timestamp should be greater than the previous one by the amount specified by
-		 * [`Config::MinimumPeriod`].
-		 *
-		 * The dispatch origin for this call must be _None_.
-		 *
-		 * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
-		 * that changing the complexity of this call could result exhausting the resources in a
-		 * block to execute any other calls.
-		 *
-		 * ## Complexity
-		 * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
-		 * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
-		 * `on_finalize`)
-		 * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
-		 *
-		 * @param {bigint} now
-		 **/
-		set: GenericTxCall<Rv, (now: bigint) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Timestamp";
-			palletCall: {
-				name: "Set";
-				params: {
-					now: bigint;
-				};
-			};
-		}>>;
-		/**
-		 * Generic pallet tx call
-		 **/
-		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
-	};
-	/**
-	 * Pallet `ImOnline`'s transaction calls
-	 **/
-	imOnline: {
-		/**
-		 * ## Complexity:
-		 * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
-		 * - `O(K)`: decoding of length `K`
-		 *
-		 * @param {PalletImOnlineHeartbeat} heartbeat
-		 * @param {PalletImOnlineSr25519AppSr25519Signature} signature
-		 **/
-		heartbeat: GenericTxCall<Rv, (heartbeat: PalletImOnlineHeartbeat, signature: PalletImOnlineSr25519AppSr25519Signature) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "ImOnline";
-			palletCall: {
-				name: "Heartbeat";
-				params: {
-					heartbeat: PalletImOnlineHeartbeat;
-					signature: PalletImOnlineSr25519AppSr25519Signature;
-				};
-			};
-		}>>;
-		/**
-		 * Generic pallet tx call
-		 **/
-		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
-	};
-	/**
 	 * Pallet `ValidatorSet`'s transaction calls
 	 **/
 	validatorSet: {
@@ -7272,159 +8141,113 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
 	};
 	/**
-	 * Pallet `Utility`'s transaction calls
+	 * Pallet `Sudo`'s transaction calls
 	 **/
-	utility: {
+	sudo: {
 		/**
-		 * Send a batch of dispatch calls.
+		 * Authenticates the sudo key and dispatches a function call with `Root` origin.
 		 *
-		 * May be called from any origin except `None`.
-		 *
-		 * - `calls`: The calls to be dispatched from the same origin. The number of call must not
-		 * exceed the constant: `batched_calls_limit` (available in constant metadata).
-		 *
-		 * If origin is root then the calls are dispatched without checking origin filter. (This
-		 * includes bypassing `frame_system::Config::BaseCallFilter`).
-		 *
-		 * ## Complexity
-		 * - O(C) where C is the number of calls to be batched.
-		 *
-		 * This will return `Ok` in all circumstances. To determine the success of the batch, an
-		 * event is deposited. If a call failed and the batch was interrupted, then the
-		 * `BatchInterrupted` event is deposited, along with the number of successful calls made
-		 * and the error of the failed call. If all were successful, then the `BatchCompleted`
-		 * event is deposited.
-		 *
-		 * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
+		 * @param {MelodieRuntimeRuntimeCallLike} call
 		 **/
-		batch: GenericTxCall<Rv, (calls: Array<MelodieRuntimeRuntimeCallLike>) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Utility";
+		sudo: GenericTxCall<Rv, (call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Sudo";
 			palletCall: {
-				name: "Batch";
+				name: "Sudo";
 				params: {
-					calls: Array<MelodieRuntimeRuntimeCallLike>;
+					call: MelodieRuntimeRuntimeCallLike;
 				};
 			};
 		}>>;
 		/**
-		 * Send a call through an indexed pseudonym of the sender.
-		 *
-		 * Filter from origin are passed along. The call will be dispatched with an origin which
-		 * use the same filter as the origin of this call.
-		 *
-		 * NOTE: If you need to ensure that any account-based filtering is not honored (i.e.
-		 * because you expect `proxy` to have been used prior in the call stack and you do not want
-		 * the call restrictions to apply to any sub-accounts), then use `as_multi_threshold_1`
-		 * in the Multisig pallet instead.
-		 *
-		 * NOTE: Prior to version *12, this was called `as_limited_sub`.
+		 * Authenticates the sudo key and dispatches a function call with `Root` origin.
+		 * This function does not check the weight of the call, and instead allows the
+		 * Sudo user to specify the weight of the call.
 		 *
 		 * The dispatch origin for this call must be _Signed_.
-		 *
-		 * @param {number} index
-		 * @param {MelodieRuntimeRuntimeCallLike} call
-		 **/
-		asDerivative: GenericTxCall<Rv, (index: number, call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Utility";
-			palletCall: {
-				name: "AsDerivative";
-				params: {
-					index: number;
-					call: MelodieRuntimeRuntimeCallLike;
-				};
-			};
-		}>>;
-		/**
-		 * Send a batch of dispatch calls and atomically execute them.
-		 * The whole transaction will rollback and fail if any of the calls failed.
-		 *
-		 * May be called from any origin except `None`.
-		 *
-		 * - `calls`: The calls to be dispatched from the same origin. The number of call must not
-		 * exceed the constant: `batched_calls_limit` (available in constant metadata).
-		 *
-		 * If origin is root then the calls are dispatched without checking origin filter. (This
-		 * includes bypassing `frame_system::Config::BaseCallFilter`).
-		 *
-		 * ## Complexity
-		 * - O(C) where C is the number of calls to be batched.
-		 *
-		 * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
-		 **/
-		batchAll: GenericTxCall<Rv, (calls: Array<MelodieRuntimeRuntimeCallLike>) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Utility";
-			palletCall: {
-				name: "BatchAll";
-				params: {
-					calls: Array<MelodieRuntimeRuntimeCallLike>;
-				};
-			};
-		}>>;
-		/**
-		 * Dispatches a function call with a provided origin.
-		 *
-		 * The dispatch origin for this call must be _Root_.
-		 *
-		 * ## Complexity
-		 * - O(1).
-		 *
-		 * @param {MelodieRuntimeOriginCaller} asOrigin
-		 * @param {MelodieRuntimeRuntimeCallLike} call
-		 **/
-		dispatchAs: GenericTxCall<Rv, (asOrigin: MelodieRuntimeOriginCaller, call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Utility";
-			palletCall: {
-				name: "DispatchAs";
-				params: {
-					asOrigin: MelodieRuntimeOriginCaller;
-					call: MelodieRuntimeRuntimeCallLike;
-				};
-			};
-		}>>;
-		/**
-		 * Send a batch of dispatch calls.
-		 * Unlike `batch`, it allows errors and won't interrupt.
-		 *
-		 * May be called from any origin except `None`.
-		 *
-		 * - `calls`: The calls to be dispatched from the same origin. The number of call must not
-		 * exceed the constant: `batched_calls_limit` (available in constant metadata).
-		 *
-		 * If origin is root then the calls are dispatch without checking origin filter. (This
-		 * includes bypassing `frame_system::Config::BaseCallFilter`).
-		 *
-		 * ## Complexity
-		 * - O(C) where C is the number of calls to be batched.
-		 *
-		 * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
-		 **/
-		forceBatch: GenericTxCall<Rv, (calls: Array<MelodieRuntimeRuntimeCallLike>) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Utility";
-			palletCall: {
-				name: "ForceBatch";
-				params: {
-					calls: Array<MelodieRuntimeRuntimeCallLike>;
-				};
-			};
-		}>>;
-		/**
-		 * Dispatch a function call with a specified weight.
-		 *
-		 * This function does not check the weight of the call, and instead allows the
-		 * Root origin to specify the weight of the call.
-		 *
-		 * The dispatch origin for this call must be _Root_.
 		 *
 		 * @param {MelodieRuntimeRuntimeCallLike} call
 		 * @param {SpWeightsWeightV2Weight} weight
 		 **/
-		withWeight: GenericTxCall<Rv, (call: MelodieRuntimeRuntimeCallLike, weight: SpWeightsWeightV2Weight) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Utility";
+		sudoUncheckedWeight: GenericTxCall<Rv, (call: MelodieRuntimeRuntimeCallLike, weight: SpWeightsWeightV2Weight) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Sudo";
 			palletCall: {
-				name: "WithWeight";
+				name: "SudoUncheckedWeight";
 				params: {
 					call: MelodieRuntimeRuntimeCallLike;
 					weight: SpWeightsWeightV2Weight;
+				};
+			};
+		}>>;
+		/**
+		 * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
+		 * key.
+		 *
+		 * @param {MultiAddressLike} new_
+		 **/
+		setKey: GenericTxCall<Rv, (new_: MultiAddressLike) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Sudo";
+			palletCall: {
+				name: "SetKey";
+				params: {
+					new: MultiAddressLike;
+				};
+			};
+		}>>;
+		/**
+		 * Authenticates the sudo key and dispatches a function call with `Signed` origin from
+		 * a given account.
+		 *
+		 * The dispatch origin for this call must be _Signed_.
+		 *
+		 * @param {MultiAddressLike} who
+		 * @param {MelodieRuntimeRuntimeCallLike} call
+		 **/
+		sudoAs: GenericTxCall<Rv, (who: MultiAddressLike, call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Sudo";
+			palletCall: {
+				name: "SudoAs";
+				params: {
+					who: MultiAddressLike;
+					call: MelodieRuntimeRuntimeCallLike;
+				};
+			};
+		}>>;
+		/**
+		 * Permanently removes the sudo key.
+		 *
+		 * **This cannot be un-done.**
+		 *
+		 **/
+		removeKey: GenericTxCall<Rv, () => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Sudo";
+			palletCall: {
+				name: "RemoveKey";
+			};
+		}>>;
+		/**
+		 * Generic pallet tx call
+		 **/
+		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
+	};
+	/**
+	 * Pallet `ImOnline`'s transaction calls
+	 **/
+	imOnline: {
+		/**
+		 * ## Complexity:
+		 * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
+		 * - `O(K)`: decoding of length `K`
+		 *
+		 * @param {PalletImOnlineHeartbeat} heartbeat
+		 * @param {PalletImOnlineSr25519AppSr25519Signature} signature
+		 **/
+		heartbeat: GenericTxCall<Rv, (heartbeat: PalletImOnlineHeartbeat, signature: PalletImOnlineSr25519AppSr25519Signature) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "ImOnline";
+			palletCall: {
+				name: "Heartbeat";
+				params: {
+					heartbeat: PalletImOnlineHeartbeat;
+					signature: PalletImOnlineSr25519AppSr25519Signature;
 				};
 			};
 		}>>;
@@ -7469,14 +8292,14 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		 *
 		 * Emits `IdentitySet` if successful.
 		 *
-		 * @param {SharedRuntimeIdentityIdentityInfo} info
+		 * @param {PalletIdentityLegacyIdentityInfo} info
 		 **/
-		setIdentity: GenericTxCall<Rv, (info: SharedRuntimeIdentityIdentityInfo) => ChainSubmittableExtrinsic<Rv, {
+		setIdentity: GenericTxCall<Rv, (info: PalletIdentityLegacyIdentityInfo) => ChainSubmittableExtrinsic<Rv, {
 			pallet: "Identity";
 			palletCall: {
 				name: "SetIdentity";
 				params: {
-					info: SharedRuntimeIdentityIdentityInfo;
+					info: PalletIdentityLegacyIdentityInfo;
 				};
 			};
 		}>>;
@@ -7787,8 +8610,9 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		/**
 		 * Add an `AccountId` with permission to grant usernames with a given `suffix` appended.
 		 *
-		 * The authority can grant up to `allocation` usernames. To top up their allocation, they
-		 * should just issue (or request via governance) a new `add_username_authority` call.
+		 * The authority can grant up to `allocation` usernames. To top up the allocation or
+		 * change the account used to grant usernames, this call can be used with the updated
+		 * parameters to overwrite the existing configuration.
 		 *
 		 * @param {MultiAddressLike} authority
 		 * @param {BytesLike} suffix
@@ -7808,13 +8632,15 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		/**
 		 * Remove `authority` from the username authorities.
 		 *
+		 * @param {BytesLike} suffix
 		 * @param {MultiAddressLike} authority
 		 **/
-		removeUsernameAuthority: GenericTxCall<Rv, (authority: MultiAddressLike) => ChainSubmittableExtrinsic<Rv, {
+		removeUsernameAuthority: GenericTxCall<Rv, (suffix: BytesLike, authority: MultiAddressLike) => ChainSubmittableExtrinsic<Rv, {
 			pallet: "Identity";
 			palletCall: {
 				name: "RemoveUsernameAuthority";
 				params: {
+					suffix: BytesLike;
 					authority: MultiAddressLike;
 				};
 			};
@@ -7822,7 +8648,11 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		/**
 		 * Set the username for `who`. Must be called by a username authority.
 		 *
-		 * The authority must have an `allocation`. Users can either pre-sign their usernames or
+		 * If `use_allocation` is set, the authority must have a username allocation available to
+		 * spend. Otherwise, the authority will need to put up a deposit for registering the
+		 * username.
+		 *
+		 * Users can either pre-sign their usernames or
 		 * accept them later.
 		 *
 		 * Usernames must:
@@ -7833,8 +8663,9 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		 * @param {MultiAddressLike} who
 		 * @param {BytesLike} username
 		 * @param {SpRuntimeMultiSignature | undefined} signature
+		 * @param {boolean} useAllocation
 		 **/
-		setUsernameFor: GenericTxCall<Rv, (who: MultiAddressLike, username: BytesLike, signature: SpRuntimeMultiSignature | undefined) => ChainSubmittableExtrinsic<Rv, {
+		setUsernameFor: GenericTxCall<Rv, (who: MultiAddressLike, username: BytesLike, signature: SpRuntimeMultiSignature | undefined, useAllocation: boolean) => ChainSubmittableExtrinsic<Rv, {
 			pallet: "Identity";
 			palletCall: {
 				name: "SetUsernameFor";
@@ -7842,6 +8673,7 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 					who: MultiAddressLike;
 					username: BytesLike;
 					signature: SpRuntimeMultiSignature | undefined;
+					useAllocation: boolean;
 				};
 			};
 		}>>;
@@ -7891,15 +8723,46 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 			};
 		}>>;
 		/**
-		 * Remove a username that corresponds to an account with no identity. Exists when a user
-		 * gets a username but then calls `clear_identity`.
+		 * Start the process of removing a username by placing it in the unbinding usernames map.
+		 * Once the grace period has passed, the username can be deleted by calling
+		 * [remove_username](crate::Call::remove_username).
 		 *
 		 * @param {BytesLike} username
 		 **/
-		removeDanglingUsername: GenericTxCall<Rv, (username: BytesLike) => ChainSubmittableExtrinsic<Rv, {
+		unbindUsername: GenericTxCall<Rv, (username: BytesLike) => ChainSubmittableExtrinsic<Rv, {
 			pallet: "Identity";
 			palletCall: {
-				name: "RemoveDanglingUsername";
+				name: "UnbindUsername";
+				params: {
+					username: BytesLike;
+				};
+			};
+		}>>;
+		/**
+		 * Permanently delete a username which has been unbinding for longer than the grace period.
+		 * Caller is refunded the fee if the username expired and the removal was successful.
+		 *
+		 * @param {BytesLike} username
+		 **/
+		removeUsername: GenericTxCall<Rv, (username: BytesLike) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Identity";
+			palletCall: {
+				name: "RemoveUsername";
+				params: {
+					username: BytesLike;
+				};
+			};
+		}>>;
+		/**
+		 * Call with [ForceOrigin](crate::Config::ForceOrigin) privileges which deletes a username
+		 * and slashes any deposit associated with it.
+		 *
+		 * @param {BytesLike} username
+		 **/
+		killUsername: GenericTxCall<Rv, (username: BytesLike) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Identity";
+			palletCall: {
+				name: "KillUsername";
 				params: {
 					username: BytesLike;
 				};
@@ -8156,87 +9019,92 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
 	};
 	/**
-	 * Pallet `Sudo`'s transaction calls
+	 * Pallet `Preimage`'s transaction calls
 	 **/
-	sudo: {
+	preimage: {
 		/**
-		 * Authenticates the sudo key and dispatches a function call with `Root` origin.
+		 * Register a preimage on-chain.
 		 *
-		 * @param {MelodieRuntimeRuntimeCallLike} call
+		 * If the preimage was previously requested, no fees or deposits are taken for providing
+		 * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
+		 *
+		 * @param {BytesLike} bytes
 		 **/
-		sudo: GenericTxCall<Rv, (call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Sudo";
+		notePreimage: GenericTxCall<Rv, (bytes: BytesLike) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Preimage";
 			palletCall: {
-				name: "Sudo";
+				name: "NotePreimage";
 				params: {
-					call: MelodieRuntimeRuntimeCallLike;
+					bytes: BytesLike;
 				};
 			};
 		}>>;
 		/**
-		 * Authenticates the sudo key and dispatches a function call with `Root` origin.
-		 * This function does not check the weight of the call, and instead allows the
-		 * Sudo user to specify the weight of the call.
+		 * Clear an unrequested preimage from the runtime storage.
 		 *
-		 * The dispatch origin for this call must be _Signed_.
+		 * If `len` is provided, then it will be a much cheaper operation.
 		 *
-		 * @param {MelodieRuntimeRuntimeCallLike} call
-		 * @param {SpWeightsWeightV2Weight} weight
+		 * - `hash`: The hash of the preimage to be removed from the store.
+		 * - `len`: The length of the preimage of `hash`.
+		 *
+		 * @param {H256} hash
 		 **/
-		sudoUncheckedWeight: GenericTxCall<Rv, (call: MelodieRuntimeRuntimeCallLike, weight: SpWeightsWeightV2Weight) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Sudo";
+		unnotePreimage: GenericTxCall<Rv, (hash: H256) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Preimage";
 			palletCall: {
-				name: "SudoUncheckedWeight";
+				name: "UnnotePreimage";
 				params: {
-					call: MelodieRuntimeRuntimeCallLike;
-					weight: SpWeightsWeightV2Weight;
+					hash: H256;
 				};
 			};
 		}>>;
 		/**
-		 * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
-		 * key.
+		 * Request a preimage be uploaded to the chain without paying any fees or deposits.
 		 *
-		 * @param {MultiAddressLike} new_
+		 * If the preimage requests has already been provided on-chain, we unreserve any deposit
+		 * a user may have paid, and take the control of the preimage out of their hands.
+		 *
+		 * @param {H256} hash
 		 **/
-		setKey: GenericTxCall<Rv, (new_: MultiAddressLike) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Sudo";
+		requestPreimage: GenericTxCall<Rv, (hash: H256) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Preimage";
 			palletCall: {
-				name: "SetKey";
+				name: "RequestPreimage";
 				params: {
-					new: MultiAddressLike;
+					hash: H256;
 				};
 			};
 		}>>;
 		/**
-		 * Authenticates the sudo key and dispatches a function call with `Signed` origin from
-		 * a given account.
+		 * Clear a previously made request for a preimage.
 		 *
-		 * The dispatch origin for this call must be _Signed_.
+		 * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
 		 *
-		 * @param {MultiAddressLike} who
-		 * @param {MelodieRuntimeRuntimeCallLike} call
+		 * @param {H256} hash
 		 **/
-		sudoAs: GenericTxCall<Rv, (who: MultiAddressLike, call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Sudo";
+		unrequestPreimage: GenericTxCall<Rv, (hash: H256) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Preimage";
 			palletCall: {
-				name: "SudoAs";
+				name: "UnrequestPreimage";
 				params: {
-					who: MultiAddressLike;
-					call: MelodieRuntimeRuntimeCallLike;
+					hash: H256;
 				};
 			};
 		}>>;
 		/**
-		 * Permanently removes the sudo key.
+		 * Ensure that the a bulk of pre-images is upgraded.
 		 *
-		 * **This cannot be un-done.**
+		 * The caller pays no fee if at least 90% of pre-images were successfully updated.
 		 *
+		 * @param {Array<H256>} hashes
 		 **/
-		removeKey: GenericTxCall<Rv, () => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Sudo";
+		ensureUpdated: GenericTxCall<Rv, (hashes: Array<H256>) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "Preimage";
 			palletCall: {
-				name: "RemoveKey";
+				name: "EnsureUpdated";
+				params: {
+					hashes: Array<H256>;
+				};
 			};
 		}>>;
 		/**
@@ -8714,91 +9582,166 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 		[callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
 	};
 	/**
-	 * Pallet `Preimage`'s transaction calls
+	 * Pallet `SafeMode`'s transaction calls
 	 **/
-	preimage: {
+	safeMode: {
 		/**
-		 * Register a preimage on-chain.
+		 * Enter safe-mode permissionlessly for [`Config::EnterDuration`] blocks.
 		 *
-		 * If the preimage was previously requested, no fees or deposits are taken for providing
-		 * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
+		 * Reserves [`Config::EnterDepositAmount`] from the caller's account.
+		 * Emits an [`Event::Entered`] event on success.
+		 * Errors with [`Error::Entered`] if the safe-mode is already entered.
+		 * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
 		 *
-		 * @param {BytesLike} bytes
 		 **/
-		notePreimage: GenericTxCall<Rv, (bytes: BytesLike) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Preimage";
+		enter: GenericTxCall<Rv, () => ChainSubmittableExtrinsic<Rv, {
+			pallet: "SafeMode";
 			palletCall: {
-				name: "NotePreimage";
+				name: "Enter";
+			};
+		}>>;
+		/**
+		 * Enter safe-mode by force for a per-origin configured number of blocks.
+		 *
+		 * Emits an [`Event::Entered`] event on success.
+		 * Errors with [`Error::Entered`] if the safe-mode is already entered.
+		 *
+		 * Can only be called by the [`Config::ForceEnterOrigin`] origin.
+		 *
+		 **/
+		forceEnter: GenericTxCall<Rv, () => ChainSubmittableExtrinsic<Rv, {
+			pallet: "SafeMode";
+			palletCall: {
+				name: "ForceEnter";
+			};
+		}>>;
+		/**
+		 * Extend the safe-mode permissionlessly for [`Config::ExtendDuration`] blocks.
+		 *
+		 * This accumulates on top of the current remaining duration.
+		 * Reserves [`Config::ExtendDepositAmount`] from the caller's account.
+		 * Emits an [`Event::Extended`] event on success.
+		 * Errors with [`Error::Exited`] if the safe-mode is entered.
+		 * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
+		 *
+		 * This may be called by any signed origin with [`Config::ExtendDepositAmount`] free
+		 * currency to reserve. This call can be disabled for all origins by configuring
+		 * [`Config::ExtendDepositAmount`] to `None`.
+		 *
+		 **/
+		extend: GenericTxCall<Rv, () => ChainSubmittableExtrinsic<Rv, {
+			pallet: "SafeMode";
+			palletCall: {
+				name: "Extend";
+			};
+		}>>;
+		/**
+		 * Extend the safe-mode by force for a per-origin configured number of blocks.
+		 *
+		 * Emits an [`Event::Extended`] event on success.
+		 * Errors with [`Error::Exited`] if the safe-mode is inactive.
+		 *
+		 * Can only be called by the [`Config::ForceExtendOrigin`] origin.
+		 *
+		 **/
+		forceExtend: GenericTxCall<Rv, () => ChainSubmittableExtrinsic<Rv, {
+			pallet: "SafeMode";
+			palletCall: {
+				name: "ForceExtend";
+			};
+		}>>;
+		/**
+		 * Exit safe-mode by force.
+		 *
+		 * Emits an [`Event::Exited`] with [`ExitReason::Force`] event on success.
+		 * Errors with [`Error::Exited`] if the safe-mode is inactive.
+		 *
+		 * Note: `safe-mode` will be automatically deactivated by [`Pallet::on_initialize`] hook
+		 * after the block height is greater than the [`EnteredUntil`] storage item.
+		 * Emits an [`Event::Exited`] with [`ExitReason::Timeout`] event when deactivated in the
+		 * hook.
+		 *
+		 **/
+		forceExit: GenericTxCall<Rv, () => ChainSubmittableExtrinsic<Rv, {
+			pallet: "SafeMode";
+			palletCall: {
+				name: "ForceExit";
+			};
+		}>>;
+		/**
+		 * Slash a deposit for an account that entered or extended safe-mode at a given
+		 * historical block.
+		 *
+		 * This can only be called while safe-mode is entered.
+		 *
+		 * Emits a [`Event::DepositSlashed`] event on success.
+		 * Errors with [`Error::Entered`] if safe-mode is entered.
+		 *
+		 * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+		 *
+		 * @param {AccountId32Like} account
+		 * @param {number} block
+		 **/
+		forceSlashDeposit: GenericTxCall<Rv, (account: AccountId32Like, block: number) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "SafeMode";
+			palletCall: {
+				name: "ForceSlashDeposit";
 				params: {
-					bytes: BytesLike;
+					account: AccountId32Like;
+					block: number;
 				};
 			};
 		}>>;
 		/**
-		 * Clear an unrequested preimage from the runtime storage.
+		 * Permissionlessly release a deposit for an account that entered safe-mode at a
+		 * given historical block.
 		 *
-		 * If `len` is provided, then it will be a much cheaper operation.
+		 * The call can be completely disabled by setting [`Config::ReleaseDelay`] to `None`.
+		 * This cannot be called while safe-mode is entered and not until
+		 * [`Config::ReleaseDelay`] blocks have passed since safe-mode was entered.
 		 *
-		 * - `hash`: The hash of the preimage to be removed from the store.
-		 * - `len`: The length of the preimage of `hash`.
+		 * Emits a [`Event::DepositReleased`] event on success.
+		 * Errors with [`Error::Entered`] if the safe-mode is entered.
+		 * Errors with [`Error::CannotReleaseYet`] if [`Config::ReleaseDelay`] block have not
+		 * passed since safe-mode was entered. Errors with [`Error::NoDeposit`] if the payee has no
+		 * reserved currency at the block specified.
 		 *
-		 * @param {H256} hash
+		 * @param {AccountId32Like} account
+		 * @param {number} block
 		 **/
-		unnotePreimage: GenericTxCall<Rv, (hash: H256) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Preimage";
+		releaseDeposit: GenericTxCall<Rv, (account: AccountId32Like, block: number) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "SafeMode";
 			palletCall: {
-				name: "UnnotePreimage";
+				name: "ReleaseDeposit";
 				params: {
-					hash: H256;
+					account: AccountId32Like;
+					block: number;
 				};
 			};
 		}>>;
 		/**
-		 * Request a preimage be uploaded to the chain without paying any fees or deposits.
+		 * Force to release a deposit for an account that entered safe-mode at a given
+		 * historical block.
 		 *
-		 * If the preimage requests has already been provided on-chain, we unreserve any deposit
-		 * a user may have paid, and take the control of the preimage out of their hands.
+		 * This can be called while safe-mode is still entered.
 		 *
-		 * @param {H256} hash
+		 * Emits a [`Event::DepositReleased`] event on success.
+		 * Errors with [`Error::Entered`] if safe-mode is entered.
+		 * Errors with [`Error::NoDeposit`] if the payee has no reserved currency at the
+		 * specified block.
+		 *
+		 * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+		 *
+		 * @param {AccountId32Like} account
+		 * @param {number} block
 		 **/
-		requestPreimage: GenericTxCall<Rv, (hash: H256) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Preimage";
+		forceReleaseDeposit: GenericTxCall<Rv, (account: AccountId32Like, block: number) => ChainSubmittableExtrinsic<Rv, {
+			pallet: "SafeMode";
 			palletCall: {
-				name: "RequestPreimage";
+				name: "ForceReleaseDeposit";
 				params: {
-					hash: H256;
-				};
-			};
-		}>>;
-		/**
-		 * Clear a previously made request for a preimage.
-		 *
-		 * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
-		 *
-		 * @param {H256} hash
-		 **/
-		unrequestPreimage: GenericTxCall<Rv, (hash: H256) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Preimage";
-			palletCall: {
-				name: "UnrequestPreimage";
-				params: {
-					hash: H256;
-				};
-			};
-		}>>;
-		/**
-		 * Ensure that the a bulk of pre-images is upgraded.
-		 *
-		 * The caller pays no fee if at least 90% of pre-images were successfully updated.
-		 *
-		 * @param {Array<H256>} hashes
-		 **/
-		ensureUpdated: GenericTxCall<Rv, (hashes: Array<H256>) => ChainSubmittableExtrinsic<Rv, {
-			pallet: "Preimage";
-			palletCall: {
-				name: "EnsureUpdated";
-				params: {
-					hashes: Array<H256>;
+					account: AccountId32Like;
+					block: number;
 				};
 			};
 		}>>;
@@ -8863,29 +9806,29 @@ export interface ChainTx<Rv extends RpcVersion> extends GenericChainTx<Rv, TxCal
 	musicalWorks: {
 		/**
 		 *
-		 * @param {MiddsSongSong} midds
+		 * @param {MiddsMusicalWorkMusicalWork} midds
 		 **/
-		register: GenericTxCall<Rv, (midds: MiddsSongSong) => ChainSubmittableExtrinsic<Rv, {
+		register: GenericTxCall<Rv, (midds: MiddsMusicalWorkMusicalWork) => ChainSubmittableExtrinsic<Rv, {
 			pallet: "MusicalWorks";
 			palletCall: {
 				name: "Register";
 				params: {
-					midds: MiddsSongSong;
+					midds: MiddsMusicalWorkMusicalWork;
 				};
 			};
 		}>>;
 		/**
 		 *
 		 * @param {H256} middsId
-		 * @param {MiddsSongSongEditableField} fieldData
+		 * @param {MiddsMusicalWorkMusicalWorkEditableField} fieldData
 		 **/
-		updateField: GenericTxCall<Rv, (middsId: H256, fieldData: MiddsSongSongEditableField) => ChainSubmittableExtrinsic<Rv, {
+		updateField: GenericTxCall<Rv, (middsId: H256, fieldData: MiddsMusicalWorkMusicalWorkEditableField) => ChainSubmittableExtrinsic<Rv, {
 			pallet: "MusicalWorks";
 			palletCall: {
 				name: "UpdateField";
 				params: {
 					middsId: H256;
-					fieldData: MiddsSongSongEditableField;
+					fieldData: MiddsMusicalWorkMusicalWorkEditableField;
 				};
 			};
 		}>>;
@@ -8926,7 +9869,7 @@ export interface AllfeatApi {
 	v2: VersionedAllfeatApi<RpcV2>;
 }
 export type AllfeatNetwork = "melodie" | "devnet";
-export type MiddsSubstrateType = MiddsStakeholderStakeholder | MiddsSongSong;
+export type MiddsSubstrateType = MiddsStakeholderStakeholder | MiddsMusicalWorkMusicalWork;
 export declare class AllfeatProvider extends WsProvider {
 	/**
 	 * Create a Provider instance for a specific Allfeat network
@@ -9051,27 +9994,27 @@ export declare class LastName extends MiddsString {
 export declare class Nickname extends MiddsString {
 	constructor();
 }
-export interface SongInput {
+export interface MusicalWorkInput {
 	[key: string]: IMiddsInput<any, any>;
 	iswc: ISWC;
-	title: SongTitle;
-	duration: SongDuration;
-	songType: SongType;
+	title: MusicalWorkTitle;
+	duration: MusicalWorkDuration;
+	musicalWorkType: MusicalWorkType;
 	shares: Shares;
 }
-export declare class Song extends Midds<SongInput> {
+export declare class MusicalWork extends Midds<MusicalWorkInput> {
 	constructor();
 	get ISWC(): ISWC;
-	get Title(): SongTitle;
-	get Duration(): SongDuration;
-	get SongType(): SongType;
+	get Title(): MusicalWorkTitle;
+	get Duration(): MusicalWorkDuration;
+	get MusicalWorkType(): MusicalWorkType;
 	get Shares(): Shares;
 	set ISWC(iswc: ISWCValue);
 	set Title(title: string);
 	set Duration(duration: number);
-	set SongType(songType: AllfeatSupportSongType);
+	set MusicalWorkType(musicalWorkType: AllfeatSupportMusicalWorkType);
 	set Shares(shares: IShare[]);
-	parseIntoSubstrateType(): MiddsSongSong;
+	parseIntoSubstrateType(): MiddsMusicalWorkMusicalWork;
 }
 export interface ISWCValue {
 	group1: number;
@@ -9084,20 +10027,20 @@ export declare class ISWC extends MiddsInput<ISWCValue, AllfeatSupportIswc> {
 	get isValid(): boolean;
 	intoSubstrateType(): AllfeatSupportIswc | undefined;
 }
-export declare class SongTitle extends MiddsString {
+export declare class MusicalWorkTitle extends MiddsString {
 	constructor();
 }
-export declare class SongDuration extends MiddsNumberNonBigInt {
+export declare class MusicalWorkDuration extends MiddsNumberNonBigInt {
 	constructor();
 	get isValid(): boolean;
 }
-export declare class SongType extends MiddsInput<AllfeatSupportSongType, AllfeatSupportSongType> {
+export declare class MusicalWorkType extends MiddsInput<AllfeatSupportMusicalWorkType, AllfeatSupportMusicalWorkType> {
 	constructor();
 	get isValid(): boolean;
-	intoSubstrateType(): AllfeatSupportSongType | undefined;
+	intoSubstrateType(): AllfeatSupportMusicalWorkType | undefined;
 }
 export interface IShareInfo {
-	role: MiddsSongRole;
+	role: MiddsMusicalWorkRole;
 	performanceShare: number;
 	mechanicalShare: number;
 }
@@ -9105,13 +10048,13 @@ export interface IShare {
 	stakeholderId: string;
 	shareInfo: IShareInfo;
 }
-export declare class Shares extends MiddsInput<IShare[], MiddsSongShare[]> {
+export declare class Shares extends MiddsInput<IShare[], MiddsMusicalWorkShare[]> {
 	value: IShare[];
 	constructor();
 	get Value(): IShare[];
 	set Value(value: IShare[]);
 	get isValid(): boolean;
-	intoSubstrateType(): MiddsSongShare[] | undefined;
+	intoSubstrateType(): MiddsMusicalWorkShare[] | undefined;
 }
 
 export {};

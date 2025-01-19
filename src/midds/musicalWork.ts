@@ -1,30 +1,29 @@
 import { IMiddsInput, MiddsInput, MiddsNumberNonBigInt, MiddsString } from './input';
 import {
   AllfeatSupportIswc,
-  AllfeatSupportSongType,
-  MiddsSongRole,
-  MiddsSongShare, MiddsSongSong,
+  AllfeatSupportMusicalWorkType,
+  MiddsMusicalWorkMusicalWork,
+  MiddsMusicalWorkRole,
+  MiddsMusicalWorkShare,
 } from '../interfaces/allfeat';
-import { AccountId32Like } from 'dedot/codecs';
 import { Midds } from './midds';
-import { toHex } from 'dedot/utils';
 
-interface SongInput {
+interface MusicalWorkInput {
   [key: string]: IMiddsInput<any, any>;
   iswc: ISWC
-  title: SongTitle
-  duration: SongDuration
-  songType: SongType
+  title: MusicalWorkTitle
+  duration: MusicalWorkDuration
+  musicalWorkType: MusicalWorkType
   shares: Shares
 }
 
-export class Song extends Midds<SongInput> {
+export class MusicalWork extends Midds<MusicalWorkInput> {
   constructor() {
-    const inputs: SongInput = {
+    const inputs: MusicalWorkInput = {
       iswc: new ISWC(),
-      title: new SongTitle(),
-      duration: new SongDuration(),
-      songType: new SongType(),
+      title: new MusicalWorkTitle(),
+      duration: new MusicalWorkDuration(),
+      musicalWorkType: new MusicalWorkType(),
       shares: new Shares()
     };
     super("musicalWorks", inputs);
@@ -34,16 +33,16 @@ export class Song extends Midds<SongInput> {
     return this.getInput("iswc");
   }
 
-  get Title(): SongTitle {
+  get Title(): MusicalWorkTitle {
     return this.getInput("title");
   }
 
-  get Duration(): SongDuration {
+  get Duration(): MusicalWorkDuration {
     return this.getInput("duration");
   }
 
-  get SongType(): SongType {
-    return this.getInput("songType");
+  get MusicalWorkType(): MusicalWorkType {
+    return this.getInput("musicalWorkType");
   }
 
   get Shares(): Shares {
@@ -62,15 +61,15 @@ export class Song extends Midds<SongInput> {
     this.Duration.Value = duration
   }
 
-  set SongType(songType: AllfeatSupportSongType) {
-    this.SongType.Value = songType;
+  set MusicalWorkType(musicalWorkType: AllfeatSupportMusicalWorkType) {
+    this.MusicalWorkType.Value = musicalWorkType;
   }
 
   set Shares(shares: IShare[]) {
     this.Shares.Value = shares;
   }
 
-  parseIntoSubstrateType(): MiddsSongSong {
+  parseIntoSubstrateType(): MiddsMusicalWorkMusicalWork {
     if (!this.isValid) {
       throw new Error("Midds data must be valid");
     }
@@ -78,7 +77,7 @@ export class Song extends Midds<SongInput> {
       iswc: this.ISWC.intoSubstrateType(),
       title: this.Title.intoSubstrateType(),
       duration: this.Duration.intoSubstrateType(),
-      type: this.SongType.intoSubstrateType(),
+      type: this.MusicalWorkType.intoSubstrateType(),
       shares: this.Shares.intoSubstrateType()
     }
   }
@@ -91,7 +90,7 @@ export interface ISWCValue {
   checkDigit: number;
 }
 
-export class ISWC extends MiddsInput<ISWCValue, AllfeatSupportIswc>{
+export class ISWC extends MiddsInput<ISWCValue, AllfeatSupportIswc> {
   constructor() {
     super("ISWC");
   }
@@ -117,13 +116,13 @@ export class ISWC extends MiddsInput<ISWCValue, AllfeatSupportIswc>{
   }
 }
 
-export class SongTitle extends MiddsString {
+export class MusicalWorkTitle extends MiddsString {
   constructor() {
     super("Title", null, 128);
   }
 }
 
-export class SongDuration extends MiddsNumberNonBigInt {
+export class MusicalWorkDuration extends MiddsNumberNonBigInt {
   constructor() {
     super("Duration");
   }
@@ -133,7 +132,7 @@ export class SongDuration extends MiddsNumberNonBigInt {
   }
 }
 
-export class SongType extends MiddsInput<AllfeatSupportSongType, AllfeatSupportSongType> {
+export class MusicalWorkType extends MiddsInput<AllfeatSupportMusicalWorkType, AllfeatSupportMusicalWorkType> {
   constructor() {
     super("Type");
   }
@@ -142,13 +141,13 @@ export class SongType extends MiddsInput<AllfeatSupportSongType, AllfeatSupportS
     return true
   }
 
-  intoSubstrateType(): AllfeatSupportSongType | undefined {
+  intoSubstrateType(): AllfeatSupportMusicalWorkType | undefined {
     return this.Value ? this.Value : undefined
   }
 }
 
 export interface IShareInfo {
-  role: MiddsSongRole,
+  role: MiddsMusicalWorkRole,
   performanceShare: number,
   mechanicalShare: number,
 }
@@ -158,7 +157,7 @@ export interface IShare {
   shareInfo: IShareInfo;
 }
 
-export class Shares extends MiddsInput<IShare[], MiddsSongShare[]> {
+export class Shares extends MiddsInput<IShare[], MiddsMusicalWorkShare[]> {
   value: IShare[] = [];
 
   constructor() {
@@ -175,17 +174,17 @@ export class Shares extends MiddsInput<IShare[], MiddsSongShare[]> {
 
   get isValid(): boolean {
     if (this.Value && this.Value.length > 0) {
-        // Percent validation
-        this.Value.every((share) =>
-          share.shareInfo.performanceShare <= 100 && share.shareInfo.mechanicalShare <= 100
-        )
+      // Percent validation
+      this.Value.every((share) =>
+        share.shareInfo.performanceShare <= 100 && share.shareInfo.mechanicalShare <= 100
+      )
     }
     return true;
   }
 
-  intoSubstrateType(): MiddsSongShare[] | undefined {
+  intoSubstrateType(): MiddsMusicalWorkShare[] | undefined {
     if (this.Value && this.Value.length > 0) {
-      return this.Value.map((share) => <MiddsSongShare>{
+      return this.Value.map((share) => <MiddsMusicalWorkShare>{
         stakeholderId: share.stakeholderId, // toHex shouldn't be used here as it ask a raw Hash (with 0x...)
         shareInfo: share.shareInfo,
       })

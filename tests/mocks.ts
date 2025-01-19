@@ -1,7 +1,7 @@
-import { Song } from '../src';
+import { MusicalWork } from '../src';
 
-export async function createAliceMusicalWork(): Promise<Song> {
-  let aliceMusicalWork: Song = new Song();
+export async function createAliceMusicalWork(): Promise<MusicalWork> {
+  let aliceMusicalWork: MusicalWork = new MusicalWork();
 
   aliceMusicalWork.ISWC = {
     group1: 123,
@@ -11,7 +11,7 @@ export async function createAliceMusicalWork(): Promise<Song> {
   };
   aliceMusicalWork.Title = 'Alice First Work';
   aliceMusicalWork.Duration = 60; // 60 seconds
-  aliceMusicalWork.SongType = 'Instrumental';
+  aliceMusicalWork.MusicalWorkType = 'Instrumental';
   aliceMusicalWork.Shares.Value.push({
     stakeholderId: "0xd4a579e4d0546b3b33ad408b6972b9e91658f9ff0548f11af6bdd44a4637a6f4",
     shareInfo: {

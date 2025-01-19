@@ -1,19 +1,15 @@
-import { Song } from '../src/midds/song';
-import { Keyring } from '@polkadot/keyring';
-import { MiddsSongSong } from '../src/interfaces/allfeat';
+import { MusicalWork } from '../src/midds/musicalWork';
+import { MiddsMusicalWorkMusicalWork } from '../src/interfaces/allfeat/index';
 import { toHex } from 'dedot/utils';
-import { cryptoWaitReady } from '@polkadot/util-crypto';
 
-describe("Unit Tests: Song", () => {
-  let musicalWork: Song;
+describe("Unit Tests: Musical Work", () => {
+  let musicalWork: MusicalWork;
 
   beforeEach(() => {
-    musicalWork = new Song();
+    musicalWork = new MusicalWork();
   })
 
-  it("should parse into Substrate type with success", async () => {
-    await cryptoWaitReady()
-    const keyring = new Keyring({ type: 'sr25519' });
+  it("should parse into Substrate type with success", () => {
     musicalWork.ISWC = {
       group1: 123,
       group2: 456,
@@ -22,9 +18,9 @@ describe("Unit Tests: Song", () => {
     }
     musicalWork.Title = "Alice First Work"
     musicalWork.Duration = 60 // 60 seconds
-    musicalWork.SongType = "Instrumental"
+    musicalWork.MusicalWorkType = "Instrumental"
     musicalWork.Shares.Value.push({
-      stakeholderId: keyring.createFromUri("//Alice").address,
+      stakeholderId: "0xd4a579e4d0546b3b33ad408b6972b9e91658f9ff0548f11af6bdd44a4637a6f4",
       shareInfo: {
         role: "C",
         performanceShare: 100,
@@ -32,7 +28,7 @@ describe("Unit Tests: Song", () => {
       }
     })
 
-    const validSubstrateType: MiddsSongSong = {
+    const validSubstrateType: MiddsMusicalWorkMusicalWork = {
       iswc: {
         group1: 123,
         group2: 456,
@@ -44,7 +40,7 @@ describe("Unit Tests: Song", () => {
       type: "Instrumental",
       shares: [
         {
-          stakeholderId: toHex(keyring.createFromUri("//Alice").address),
+          stakeholderId: "0xd4a579e4d0546b3b33ad408b6972b9e91658f9ff0548f11af6bdd44a4637a6f4",
           shareInfo: {
             role: "C",
             performanceShare: 100,

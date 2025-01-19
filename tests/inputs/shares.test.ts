@@ -1,4 +1,4 @@
-import { IShare, Shares } from '../../src/midds/song';
+import { IShare, Shares } from '../../src/midds/musicalWork';
 import { Keyring } from '@polkadot/keyring';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 
@@ -12,7 +12,7 @@ describe('Inputs / Unit Tests: Shares', () => {
   it("should valid correct data", async () => {
     await cryptoWaitReady();
     // Empty on init
-    expect(shares.Value).toBe([]);
+    expect(shares.Value).toStrictEqual([]);
     // Valid when empty
     expect(shares.isValid).toBeTruthy();
 

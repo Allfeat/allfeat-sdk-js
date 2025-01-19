@@ -1,4 +1,4 @@
-import { ISWC } from '../../src/midds/song';
+import { ISWC } from '../../src/midds/musicalWork';
 
 describe("Inputs / Unit Tests: ISWC", () => {
   let iswc: ISWC;

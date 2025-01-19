@@ -1,4 +1,4 @@
-import { MiddsSongSong, MiddsStakeholderStakeholder } from './interfaces/allfeat';
+import { MiddsMusicalWorkMusicalWork, MiddsStakeholderStakeholder } from './interfaces/allfeat';
 
 export type AllfeatNetwork = 'melodie' | 'devnet';
-export type MiddsSubstrateType = MiddsStakeholderStakeholder | MiddsSongSong;
+export type MiddsSubstrateType = MiddsStakeholderStakeholder | MiddsMusicalWorkMusicalWork;
