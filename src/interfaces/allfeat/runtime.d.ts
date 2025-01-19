@@ -6,72 +6,116 @@ import type {
   RpcVersion,
 } from 'dedot/types';
 import type {
-  Option,
-  OpaqueMetadata,
-  ApplyExtrinsicResult,
-  OpaqueExtrinsicLike,
-  CheckInherentsResult,
-  Block,
-  InherentData,
-  OpaqueExtrinsic,
+  RuntimeVersion,
   Header,
-  TransactionValidity,
-  TransactionSource,
-  BlockHash,
-  SetId,
-  OpaqueKeyOwnershipProof,
+  DispatchError,
+  Result,
+  UncheckedExtrinsicLike,
+  UncheckedExtrinsic,
+  H256,
   AccountId32Like,
-  AuthorityList,
-  GrandpaEquivocationProof,
-  BabeConfiguration,
-  BabeEpoch,
-  Slot,
-  BabeEquivocationProof,
-  AccountId32,
-  Nonce,
-  RuntimeDispatchInfo,
-  FeeDetails,
-  Balance,
-  Weight,
-  RawBytesLike,
   Bytes,
   BytesLike,
-  KeyTypeId,
-  Result,
-  Text,
 } from 'dedot/codecs';
+import type {
+  SpRuntimeBlock,
+  SpRuntimeExtrinsicInclusionMode,
+  SpCoreOpaqueMetadata,
+  SpRuntimeTransactionValidityTransactionValidityError,
+  SpInherentsInherentData,
+  SpInherentsCheckInherentsResult,
+  SpRuntimeTransactionValidityValidTransaction,
+  SpRuntimeTransactionValidityTransactionSource,
+  SpConsensusGrandpaAppPublic,
+  SpConsensusGrandpaEquivocationProof,
+  SpRuntimeOpaqueValue,
+  SpConsensusBabeBabeConfiguration,
+  SpConsensusSlotsSlot,
+  SpConsensusBabeEpoch,
+  SpConsensusBabeOpaqueKeyOwnershipProof,
+  SpConsensusBabeAppPublic,
+  SpConsensusSlotsEquivocationProof,
+  SpAuthorityDiscoveryAppPublic,
+  PalletTransactionPaymentRuntimeDispatchInfo,
+  PalletTransactionPaymentFeeDetails,
+  SpWeightsWeightV2Weight,
+  MelodieRuntimeRuntimeCallLike,
+  SpCoreCryptoKeyTypeId,
+} from './types';
 
 export interface RuntimeApis<Rv extends RpcVersion>
   extends GenericRuntimeApis<Rv> {
   /**
+   * @runtimeapi: Core - 0xdf6acb689907609b
+   **/
+  core: {
+    /**
+     * Returns the version of the runtime.
+     *
+     * @callname: Core_version
+     **/
+    version: GenericRuntimeApiMethod<Rv, () => Promise<RuntimeVersion>>;
+
+    /**
+     * Execute the given block.
+     *
+     * @callname: Core_execute_block
+     * @param {SpRuntimeBlock} block
+     **/
+    executeBlock: GenericRuntimeApiMethod<
+      Rv,
+      (block: SpRuntimeBlock) => Promise<[]>
+    >;
+
+    /**
+     * Initialize a block with the given header and return the runtime executive mode.
+     *
+     * @callname: Core_initialize_block
+     * @param {Header} header
+     **/
+    initializeBlock: GenericRuntimeApiMethod<
+      Rv,
+      (header: Header) => Promise<SpRuntimeExtrinsicInclusionMode>
+    >;
+
+    /**
+     * Generic runtime api call
+     **/
+    [method: string]: GenericRuntimeApiMethod<Rv>;
+  };
+  /**
    * @runtimeapi: Metadata - 0x37e397fc7c91f5e4
-   * @version: 2
    **/
   metadata: {
     /**
+     * Returns the metadata of a runtime.
+     *
+     * @callname: Metadata_metadata
+     **/
+    metadata: GenericRuntimeApiMethod<Rv, () => Promise<SpCoreOpaqueMetadata>>;
+
+    /**
      * Returns the metadata at a given version.
+     *
+     * If the given `version` isn't supported, this will return `None`.
+     * Use [`Self::metadata_versions`] to find out about supported metadata version of the runtime.
      *
      * @callname: Metadata_metadata_at_version
      * @param {number} version
      **/
     metadataAtVersion: GenericRuntimeApiMethod<
       Rv,
-      (version: number) => Promise<Option<OpaqueMetadata>>
+      (version: number) => Promise<SpCoreOpaqueMetadata | undefined>
     >;
 
     /**
      * Returns the supported metadata versions.
      *
+     * This can be used to call `metadata_at_version`.
+     *
      * @callname: Metadata_metadata_versions
      **/
     metadataVersions: GenericRuntimeApiMethod<Rv, () => Promise<Array<number>>>;
-
-    /**
-     * Returns the metadata of a runtime.
-     *
-     * @callname: Metadata_metadata
-     **/
-    metadata: GenericRuntimeApiMethod<Rv, () => Promise<OpaqueMetadata>>;
 
     /**
      * Generic runtime api call
@@ -80,45 +124,61 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: BlockBuilder - 0x40fe3ad401f8959a
-   * @version: 6
    **/
   blockBuilder: {
     /**
+     * Apply the given extrinsic.
+     *
+     * Returns an inclusion outcome which specifies if this extrinsic is included in
+     * this block or not.
      *
      * @callname: BlockBuilder_apply_extrinsic
-     * @param {OpaqueExtrinsicLike} extrinsic
+     * @param {UncheckedExtrinsicLike} extrinsic
      **/
     applyExtrinsic: GenericRuntimeApiMethod<
       Rv,
-      (extrinsic: OpaqueExtrinsicLike) => Promise<ApplyExtrinsicResult>
+      (
+        extrinsic: UncheckedExtrinsicLike,
+      ) => Promise<
+        Result<
+          Result<[], DispatchError>,
+          SpRuntimeTransactionValidityTransactionValidityError
+        >
+      >
     >;
 
     /**
-     *
-     * @callname: BlockBuilder_check_inherents
-     * @param {Block} block
-     * @param {InherentData} data
-     **/
-    checkInherents: GenericRuntimeApiMethod<
-      Rv,
-      (block: Block, data: InherentData) => Promise<CheckInherentsResult>
-    >;
-
-    /**
-     *
-     * @callname: BlockBuilder_inherent_extrinsics
-     * @param {InherentData} inherent
-     **/
-    inherentExtrinsics: GenericRuntimeApiMethod<
-      Rv,
-      (inherent: InherentData) => Promise<Array<OpaqueExtrinsic>>
-    >;
-
-    /**
+     * Finish the current block.
      *
      * @callname: BlockBuilder_finalize_block
      **/
     finalizeBlock: GenericRuntimeApiMethod<Rv, () => Promise<Header>>;
+
+    /**
+     * Generate inherent extrinsics. The inherent data will vary from chain to chain.
+     *
+     * @callname: BlockBuilder_inherent_extrinsics
+     * @param {SpInherentsInherentData} inherent
+     **/
+    inherentExtrinsics: GenericRuntimeApiMethod<
+      Rv,
+      (inherent: SpInherentsInherentData) => Promise<Array<UncheckedExtrinsic>>
+    >;
+
+    /**
+     * Check that the inherents are valid. The inherent data will vary from chain to chain.
+     *
+     * @callname: BlockBuilder_check_inherents
+     * @param {SpRuntimeBlock} block
+     * @param {SpInherentsInherentData} data
+     **/
+    checkInherents: GenericRuntimeApiMethod<
+      Rv,
+      (
+        block: SpRuntimeBlock,
+        data: SpInherentsInherentData,
+      ) => Promise<SpInherentsCheckInherentsResult>
+    >;
 
     /**
      * Generic runtime api call
@@ -127,24 +187,36 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: TaggedTransactionQueue - 0xd2bc9897eed08f15
-   * @version: 3
    **/
   taggedTransactionQueue: {
     /**
      * Validate the transaction.
      *
+     * This method is invoked by the transaction pool to learn details about given transaction.
+     * The implementation should make sure to verify the correctness of the transaction
+     * against current state. The given `block_hash` corresponds to the hash of the block
+     * that is used as current state.
+     *
+     * Note that this call may be performed by the pool multiple times and transactions
+     * might be verified in any possible order.
+     *
      * @callname: TaggedTransactionQueue_validate_transaction
-     * @param {TransactionSource} source
-     * @param {OpaqueExtrinsicLike} tx
-     * @param {BlockHash} blockHash
+     * @param {SpRuntimeTransactionValidityTransactionSource} source
+     * @param {UncheckedExtrinsicLike} tx
+     * @param {H256} block_hash
      **/
     validateTransaction: GenericRuntimeApiMethod<
       Rv,
       (
-        source: TransactionSource,
-        tx: OpaqueExtrinsicLike,
-        blockHash: BlockHash,
-      ) => Promise<TransactionValidity>
+        source: SpRuntimeTransactionValidityTransactionSource,
+        tx: UncheckedExtrinsicLike,
+        blockHash: H256,
+      ) => Promise<
+        Result<
+          SpRuntimeTransactionValidityValidTransaction,
+          SpRuntimeTransactionValidityTransactionValidityError
+        >
+      >
     >;
 
     /**
@@ -154,7 +226,6 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: OffchainWorkerApi - 0xf78b278be53f454c
-   * @version: 2
    **/
   offchainWorkerApi: {
     /**
@@ -175,16 +246,8 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: GrandpaApi - 0xed99c5acb25eedf5
-   * @version: 3
    **/
   grandpaApi: {
-    /**
-     * Get current GRANDPA authority set id.
-     *
-     * @callname: GrandpaApi_current_set_id
-     **/
-    currentSetId: GenericRuntimeApiMethod<Rv, () => Promise<SetId>>;
-
     /**
      * Get the current GRANDPA authorities and weights. This should not change except
      * for when changes are scheduled and the corresponding delay has passed.
@@ -193,16 +256,33 @@ export interface RuntimeApis<Rv extends RpcVersion>
      * used to finalize descendants of this block (B+1, B+2, ...). The block B itself
      * is finalized by the authorities from block B-1.
      *
-     * @callname: GrandpaApi_generate_key_ownership_proof
-     * @param {SetId} setId
-     * @param {AccountId32Like} authorityId
+     * @callname: GrandpaApi_grandpa_authorities
      **/
-    generateKeyOwnershipProof: GenericRuntimeApiMethod<
+    grandpaAuthorities: GenericRuntimeApiMethod<
+      Rv,
+      () => Promise<Array<[SpConsensusGrandpaAppPublic, bigint]>>
+    >;
+
+    /**
+     * Submits an unsigned extrinsic to report an equivocation. The caller
+     * must provide the equivocation proof and a key ownership proof
+     * (should be obtained using `generate_key_ownership_proof`). The
+     * extrinsic will be unsigned and should only be accepted for local
+     * authorship (not to be broadcast to the network). This method returns
+     * `None` when creation of the extrinsic fails, e.g. if equivocation
+     * reporting is disabled for the given runtime (i.e. this method is
+     * hardcoded to return `None`). Only useful in an offchain context.
+     *
+     * @callname: GrandpaApi_submit_report_equivocation_unsigned_extrinsic
+     * @param {SpConsensusGrandpaEquivocationProof} equivocation_proof
+     * @param {SpRuntimeOpaqueValue} key_owner_proof
+     **/
+    submitReportEquivocationUnsignedExtrinsic: GenericRuntimeApiMethod<
       Rv,
       (
-        setId: SetId,
-        authorityId: AccountId32Like,
-      ) => Promise<Option<OpaqueKeyOwnershipProof>>
+        equivocationProof: SpConsensusGrandpaEquivocationProof,
+        keyOwnerProof: SpRuntimeOpaqueValue,
+      ) => Promise<[] | undefined>
     >;
 
     /**
@@ -218,34 +298,24 @@ export interface RuntimeApis<Rv extends RpcVersion>
      * instead use indexed data through an offchain worker, not requiring
      * older states to be available.
      *
-     * @callname: GrandpaApi_grandpa_authorities
+     * @callname: GrandpaApi_generate_key_ownership_proof
+     * @param {bigint} set_id
+     * @param {SpConsensusGrandpaAppPublic} authority_id
      **/
-    grandpaAuthorities: GenericRuntimeApiMethod<
+    generateKeyOwnershipProof: GenericRuntimeApiMethod<
       Rv,
-      () => Promise<AuthorityList>
+      (
+        setId: bigint,
+        authorityId: SpConsensusGrandpaAppPublic,
+      ) => Promise<SpRuntimeOpaqueValue | undefined>
     >;
 
     /**
-     * Submits an unsigned extrinsic to report an equivocation. The caller
-     * must provide the equivocation proof and a key ownership proof
-     * (should be obtained using `generate_key_ownership_proof`). The
-     * extrinsic will be unsigned and should only be accepted for local
-     * authorship (not to be broadcast to the network). This method returns
-     * `None` when creation of the extrinsic fails, e.g. if equivocation
-     * reporting is disabled for the given runtime (i.e. this method is
-     * hardcoded to return `None`). Only useful in an offchain context.
+     * Get current GRANDPA authority set id.
      *
-     * @callname: GrandpaApi_submit_report_equivocation_unsigned_extrinsic
-     * @param {GrandpaEquivocationProof} equivocationProof
-     * @param {OpaqueKeyOwnershipProof} keyOwnerProof
+     * @callname: GrandpaApi_current_set_id
      **/
-    submitReportEquivocationUnsignedExtrinsic: GenericRuntimeApiMethod<
-      Rv,
-      (
-        equivocationProof: GrandpaEquivocationProof,
-        keyOwnerProof: OpaqueKeyOwnershipProof,
-      ) => Promise<Option<[]>>
-    >;
+    currentSetId: GenericRuntimeApiMethod<Rv, () => Promise<bigint>>;
 
     /**
      * Generic runtime api call
@@ -254,7 +324,6 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: BabeApi - 0xcbca25e39f142387
-   * @version: 2
    **/
   babeApi: {
     /**
@@ -264,7 +333,17 @@ export interface RuntimeApis<Rv extends RpcVersion>
      **/
     configuration: GenericRuntimeApiMethod<
       Rv,
-      () => Promise<BabeConfiguration>
+      () => Promise<SpConsensusBabeBabeConfiguration>
+    >;
+
+    /**
+     * Returns the slot that started the current epoch.
+     *
+     * @callname: BabeApi_current_epoch_start
+     **/
+    currentEpochStart: GenericRuntimeApiMethod<
+      Rv,
+      () => Promise<SpConsensusSlotsSlot>
     >;
 
     /**
@@ -272,21 +351,18 @@ export interface RuntimeApis<Rv extends RpcVersion>
      *
      * @callname: BabeApi_current_epoch
      **/
-    currentEpoch: GenericRuntimeApiMethod<Rv, () => Promise<BabeEpoch>>;
+    currentEpoch: GenericRuntimeApiMethod<
+      Rv,
+      () => Promise<SpConsensusBabeEpoch>
+    >;
 
     /**
-     * Returns the slot that started the current epoch.
-     *
-     * @callname: BabeApi_current_epoch_start
-     **/
-    currentEpochStart: GenericRuntimeApiMethod<Rv, () => Promise<Slot>>;
-
-    /**
-     * Returns information regarding the next epoch (which was already previously announced).
+     * Returns information regarding the next epoch (which was already
+     * previously announced).
      *
      * @callname: BabeApi_next_epoch
      **/
-    nextEpoch: GenericRuntimeApiMethod<Rv, () => Promise<BabeEpoch>>;
+    nextEpoch: GenericRuntimeApiMethod<Rv, () => Promise<SpConsensusBabeEpoch>>;
 
     /**
      * Generates a proof of key ownership for the given authority in the
@@ -302,15 +378,15 @@ export interface RuntimeApis<Rv extends RpcVersion>
      * worker, not requiring older states to be available.
      *
      * @callname: BabeApi_generate_key_ownership_proof
-     * @param {Slot} slot
-     * @param {AccountId32Like} authorityId
+     * @param {SpConsensusSlotsSlot} slot
+     * @param {SpConsensusBabeAppPublic} authority_id
      **/
     generateKeyOwnershipProof: GenericRuntimeApiMethod<
       Rv,
       (
-        slot: Slot,
-        authorityId: AccountId32Like,
-      ) => Promise<Option<OpaqueKeyOwnershipProof>>
+        slot: SpConsensusSlotsSlot,
+        authorityId: SpConsensusBabeAppPublic,
+      ) => Promise<SpConsensusBabeOpaqueKeyOwnershipProof | undefined>
     >;
 
     /**
@@ -324,15 +400,15 @@ export interface RuntimeApis<Rv extends RpcVersion>
      * hardcoded to return `None`). Only useful in an offchain context.
      *
      * @callname: BabeApi_submit_report_equivocation_unsigned_extrinsic
-     * @param {BabeEquivocationProof} equivocationProof
-     * @param {OpaqueKeyOwnershipProof} keyOwnerProof
+     * @param {SpConsensusSlotsEquivocationProof} equivocation_proof
+     * @param {SpConsensusBabeOpaqueKeyOwnershipProof} key_owner_proof
      **/
     submitReportEquivocationUnsignedExtrinsic: GenericRuntimeApiMethod<
       Rv,
       (
-        equivocationProof: BabeEquivocationProof,
-        keyOwnerProof: OpaqueKeyOwnershipProof,
-      ) => Promise<Option<[]>>
+        equivocationProof: SpConsensusSlotsEquivocationProof,
+        keyOwnerProof: SpConsensusBabeOpaqueKeyOwnershipProof,
+      ) => Promise<[] | undefined>
     >;
 
     /**
@@ -342,7 +418,6 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: AuthorityDiscoveryApi - 0x687ad44ad37f03c2
-   * @version: 1
    **/
   authorityDiscoveryApi: {
     /**
@@ -350,7 +425,10 @@ export interface RuntimeApis<Rv extends RpcVersion>
      *
      * @callname: AuthorityDiscoveryApi_authorities
      **/
-    authorities: GenericRuntimeApiMethod<Rv, () => Promise<Array<AccountId32>>>;
+    authorities: GenericRuntimeApiMethod<
+      Rv,
+      () => Promise<Array<SpAuthorityDiscoveryAppPublic>>
+    >;
 
     /**
      * Generic runtime api call
@@ -359,18 +437,17 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: AccountNonceApi - 0xbc9d89904f5b923f
-   * @version: 1
    **/
   accountNonceApi: {
     /**
-     * The API to query account nonce (aka transaction index)
+     * Get current account nonce of given `AccountId`.
      *
      * @callname: AccountNonceApi_account_nonce
-     * @param {AccountId32Like} accountId
+     * @param {AccountId32Like} account
      **/
     accountNonce: GenericRuntimeApiMethod<
       Rv,
-      (accountId: AccountId32Like) => Promise<Nonce>
+      (account: AccountId32Like) => Promise<number>
     >;
 
     /**
@@ -380,53 +457,54 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: TransactionPaymentApi - 0x37c8bb1350a9a2a8
-   * @version: 4
    **/
   transactionPaymentApi: {
     /**
-     * The transaction info
      *
      * @callname: TransactionPaymentApi_query_info
-     * @param {OpaqueExtrinsicLike} uxt
+     * @param {UncheckedExtrinsicLike} uxt
      * @param {number} len
      **/
     queryInfo: GenericRuntimeApiMethod<
       Rv,
-      (uxt: OpaqueExtrinsicLike, len: number) => Promise<RuntimeDispatchInfo>
+      (
+        uxt: UncheckedExtrinsicLike,
+        len: number,
+      ) => Promise<PalletTransactionPaymentRuntimeDispatchInfo>
     >;
 
     /**
-     * The transaction fee details
      *
      * @callname: TransactionPaymentApi_query_fee_details
-     * @param {OpaqueExtrinsicLike} uxt
+     * @param {UncheckedExtrinsicLike} uxt
      * @param {number} len
      **/
     queryFeeDetails: GenericRuntimeApiMethod<
       Rv,
-      (uxt: OpaqueExtrinsicLike, len: number) => Promise<FeeDetails>
+      (
+        uxt: UncheckedExtrinsicLike,
+        len: number,
+      ) => Promise<PalletTransactionPaymentFeeDetails>
     >;
 
     /**
-     * Query the output of the current LengthToFee given some input
+     *
+     * @callname: TransactionPaymentApi_query_weight_to_fee
+     * @param {SpWeightsWeightV2Weight} weight
+     **/
+    queryWeightToFee: GenericRuntimeApiMethod<
+      Rv,
+      (weight: SpWeightsWeightV2Weight) => Promise<bigint>
+    >;
+
+    /**
      *
      * @callname: TransactionPaymentApi_query_length_to_fee
      * @param {number} length
      **/
     queryLengthToFee: GenericRuntimeApiMethod<
       Rv,
-      (length: number) => Promise<Balance>
-    >;
-
-    /**
-     * Query the output of the current WeightToFee given some input
-     *
-     * @callname: TransactionPaymentApi_query_weight_to_fee
-     * @param {Weight} weight
-     **/
-    queryWeightToFee: GenericRuntimeApiMethod<
-      Rv,
-      (weight: Weight) => Promise<Balance>
+      (length: number) => Promise<bigint>
     >;
 
     /**
@@ -436,53 +514,58 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: TransactionPaymentCallApi - 0xf3ff14d5ab527059
-   * @version: 3
    **/
   transactionPaymentCallApi: {
     /**
      * Query information of a dispatch class, weight, and fee of a given encoded `Call`.
      *
      * @callname: TransactionPaymentCallApi_query_call_info
-     * @param {RawBytesLike} call
+     * @param {MelodieRuntimeRuntimeCallLike} call
      * @param {number} len
      **/
     queryCallInfo: GenericRuntimeApiMethod<
       Rv,
-      (call: RawBytesLike, len: number) => Promise<RuntimeDispatchInfo>
+      (
+        call: MelodieRuntimeRuntimeCallLike,
+        len: number,
+      ) => Promise<PalletTransactionPaymentRuntimeDispatchInfo>
     >;
 
     /**
      * Query fee details of a given encoded `Call`.
      *
      * @callname: TransactionPaymentCallApi_query_call_fee_details
-     * @param {RawBytesLike} call
+     * @param {MelodieRuntimeRuntimeCallLike} call
      * @param {number} len
      **/
     queryCallFeeDetails: GenericRuntimeApiMethod<
       Rv,
-      (call: RawBytesLike, len: number) => Promise<FeeDetails>
+      (
+        call: MelodieRuntimeRuntimeCallLike,
+        len: number,
+      ) => Promise<PalletTransactionPaymentFeeDetails>
     >;
 
     /**
-     * Query the output of the current LengthToFee given some input
+     * Query the output of the current `WeightToFee` given some input.
+     *
+     * @callname: TransactionPaymentCallApi_query_weight_to_fee
+     * @param {SpWeightsWeightV2Weight} weight
+     **/
+    queryWeightToFee: GenericRuntimeApiMethod<
+      Rv,
+      (weight: SpWeightsWeightV2Weight) => Promise<bigint>
+    >;
+
+    /**
+     * Query the output of the current `LengthToFee` given some input.
      *
      * @callname: TransactionPaymentCallApi_query_length_to_fee
      * @param {number} length
      **/
     queryLengthToFee: GenericRuntimeApiMethod<
       Rv,
-      (length: number) => Promise<Balance>
-    >;
-
-    /**
-     * Query the output of the current WeightToFee given some input
-     *
-     * @callname: TransactionPaymentCallApi_query_weight_to_fee
-     * @param {Weight} weight
-     **/
-    queryWeightToFee: GenericRuntimeApiMethod<
-      Rv,
-      (weight: Weight) => Promise<Balance>
+      (length: number) => Promise<bigint>
     >;
 
     /**
@@ -492,7 +575,6 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: SessionKeys - 0xab3c0572291feb8b
-   * @version: 1
    **/
   sessionKeys: {
     /**
@@ -505,24 +587,26 @@ export interface RuntimeApis<Rv extends RpcVersion>
      * Returns the concatenated SCALE encoded public keys.
      *
      * @callname: SessionKeys_generate_session_keys
-     * @param {Option<BytesLike>} seed
+     * @param {BytesLike | undefined} seed
      **/
     generateSessionKeys: GenericRuntimeApiMethod<
       Rv,
-      (seed?: Option<BytesLike>) => Promise<Bytes>
+      (seed?: BytesLike | undefined) => Promise<Bytes>
     >;
 
     /**
-     * Decode the given public session key
+     * Decode the given public session keys.
      *
-     * Returns the list of public raw public keys + key typ
+     * Returns the list of public raw public keys + key type.
      *
      * @callname: SessionKeys_decode_session_keys
      * @param {BytesLike} encoded
      **/
     decodeSessionKeys: GenericRuntimeApiMethod<
       Rv,
-      (encoded: BytesLike) => Promise<Option<Array<[Bytes, KeyTypeId]>>>
+      (
+        encoded: BytesLike,
+      ) => Promise<Array<[Bytes, SpCoreCryptoKeyTypeId]> | undefined>
     >;
 
     /**
@@ -532,35 +616,61 @@ export interface RuntimeApis<Rv extends RpcVersion>
   };
   /**
    * @runtimeapi: GenesisBuilder - 0xfbc577b9d747efd6
-   * @version: 1
    **/
   genesisBuilder: {
     /**
-     * Creates the default `GenesisConfig` and returns it as a JSON blob.
+     * Build `RuntimeGenesisConfig` from a JSON blob not using any defaults and store it in the
+     * storage.
      *
-     * This function instantiates the default `GenesisConfig` struct for the runtime and serializes it into a JSON
-     * blob. It returns a `Vec<u8>` containing the JSON representation of the default `GenesisConfig`.
+     * In the case of a FRAME-based runtime, this function deserializes the full
+     * `RuntimeGenesisConfig` from the given JSON blob and puts it into the storage. If the
+     * provided JSON blob is incorrect or incomplete or the deserialization fails, an error
+     * is returned.
      *
-     * @callname: GenesisBuilder_create_default_config
-     **/
-    createDefaultConfig: GenericRuntimeApiMethod<Rv, () => Promise<Bytes>>;
-
-    /**
-     * Build `GenesisConfig` from a JSON blob not using any defaults and store it in the storage.
+     * Please note that provided JSON blob must contain all `RuntimeGenesisConfig` fields, no
+     * defaults will be used.
      *
-     * This function deserializes the full `GenesisConfig` from the given JSON blob and puts it into the storage.
-     * If the provided JSON blob is incorrect or incomplete or the deserialization fails, an error is returned.
-     * It is recommended to log any errors encountered during the process.
-     *
-     * Please note that provided json blob must contain all `GenesisConfig` fields, no defaults will be used.
-     *
-     * @callname: GenesisBuilder_build_config
+     * @callname: GenesisBuilder_build_state
      * @param {BytesLike} json
      **/
-    buildConfig: GenericRuntimeApiMethod<
+    buildState: GenericRuntimeApiMethod<
       Rv,
-      (json: BytesLike) => Promise<Result<[], Text>>
+      (json: BytesLike) => Promise<Result<[], string>>
     >;
+
+    /**
+     * Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by
+     * `id`.
+     *
+     * If `id` is `None` the function should return JSON blob representation of the default
+     * `RuntimeGenesisConfig` struct of the runtime. Implementation must provide default
+     * `RuntimeGenesisConfig`.
+     *
+     * Otherwise function returns a JSON representation of the built-in, named
+     * `RuntimeGenesisConfig` preset identified by `id`, or `None` if such preset does not
+     * exist. Returned `Vec<u8>` contains bytes of JSON blob (patch) which comprises a list of
+     * (potentially nested) key-value pairs that are intended for customizing the default
+     * runtime genesis config. The patch shall be merged (rfc7386) with the JSON representation
+     * of the default `RuntimeGenesisConfig` to create a comprehensive genesis config that can
+     * be used in `build_state` method.
+     *
+     * @callname: GenesisBuilder_get_preset
+     * @param {string | undefined} id
+     **/
+    getPreset: GenericRuntimeApiMethod<
+      Rv,
+      (id?: string | undefined) => Promise<Bytes | undefined>
+    >;
+
+    /**
+     * Returns a list of identifiers for available builtin `RuntimeGenesisConfig` presets.
+     *
+     * The presets from the list can be queried with [`GenesisBuilder::get_preset`] method. If
+     * no named presets are provided by the runtime the list is empty.
+     *
+     * @callname: GenesisBuilder_preset_names
+     **/
+    presetNames: GenericRuntimeApiMethod<Rv, () => Promise<Array<string>>>;
 
     /**
      * Generic runtime api call

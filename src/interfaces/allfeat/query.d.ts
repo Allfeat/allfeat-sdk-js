@@ -14,9 +14,9 @@ import type {
   Digest,
   Phase,
   FixedBytes,
+  FixedU128,
   BytesLike,
   Data,
-  FixedU128,
 } from 'dedot/codecs';
 import type {
   FrameSystemAccountInfo,
@@ -24,36 +24,38 @@ import type {
   FrameSystemEventRecord,
   FrameSystemLastRuntimeUpgradeInfo,
   FrameSystemCodeUpgradeAuthorization,
-  PalletBalancesAccountData,
-  PalletBalancesBalanceLock,
-  PalletBalancesReserveData,
-  FrameSupportTokensMiscIdAmount,
-  FrameSupportTokensMiscIdAmountRuntimeFreezeReason,
   SpConsensusBabeAppPublic,
   SpConsensusSlotsSlot,
   SpConsensusBabeDigestsNextConfigDescriptor,
   SpConsensusBabeDigestsPreDigest,
   SpConsensusBabeBabeEpochConfiguration,
-  PalletImOnlineSr25519AppSr25519Public,
+  PalletBalancesAccountData,
+  PalletBalancesBalanceLock,
+  PalletBalancesReserveData,
+  FrameSupportTokensMiscIdAmount,
+  FrameSupportTokensMiscIdAmountRuntimeFreezeReason,
+  PalletTransactionPaymentReleases,
   MelodieRuntimePalletsSessionSessionKeys,
   SpCoreCryptoKeyTypeId,
   PalletGrandpaStoredState,
   PalletGrandpaStoredPendingChange,
   SpConsensusGrandpaAppPublic,
+  PalletImOnlineSr25519AppSr25519Public,
   SpAuthorityDiscoveryAppPublic,
   PalletIdentityRegistration,
   PalletIdentityRegistrarInfo,
   PalletIdentityAuthorityProperties,
+  PalletIdentityUsernameInformation,
+  PalletIdentityProvider,
   PalletSchedulerScheduled,
   PalletSchedulerRetryConfig,
+  PalletPreimageOldRequestStatus,
+  PalletPreimageRequestStatus,
   PalletProxyProxyDefinition,
   PalletProxyAnnouncement,
   PalletMultisigMultisig,
-  PalletTransactionPaymentReleases,
-  PalletPreimageOldRequestStatus,
-  PalletPreimageRequestStatus,
   PalletMiddsMiddsWrapper,
-  PalletMiddsMiddsWrapperSong,
+  PalletMiddsMiddsWrapperMusicalWork,
 } from './types';
 
 export interface ChainStorage<Rv extends RpcVersion>
@@ -223,119 +225,6 @@ export interface ChainStorage<Rv extends RpcVersion>
     authorizedUpgrade: GenericStorageQuery<
       Rv,
       () => FrameSystemCodeUpgradeAuthorization | undefined
-    >;
-
-    /**
-     * Generic pallet storage query
-     **/
-    [storage: string]: GenericStorageQuery<Rv>;
-  };
-  /**
-   * Pallet `Balances`'s storage queries
-   **/
-  balances: {
-    /**
-     * The total units issued in the system.
-     *
-     * @param {Callback<bigint> =} callback
-     **/
-    totalIssuance: GenericStorageQuery<Rv, () => bigint>;
-
-    /**
-     * The total units of outstanding deactivated balance in the system.
-     *
-     * @param {Callback<bigint> =} callback
-     **/
-    inactiveIssuance: GenericStorageQuery<Rv, () => bigint>;
-
-    /**
-     * The Balances pallet example of storing the balance of an account.
-     *
-     * # Example
-     *
-     * ```nocompile
-     * impl pallet_balances::Config for Runtime {
-     * type AccountStore = StorageMapShim<Self::Account<Runtime>, frame_system::Provider<Runtime>, AccountId, Self::AccountData<Balance>>
-     * }
-     * ```
-     *
-     * You can also store the balance of an account in the `System` pallet.
-     *
-     * # Example
-     *
-     * ```nocompile
-     * impl pallet_balances::Config for Runtime {
-     * type AccountStore = System
-     * }
-     * ```
-     *
-     * But this comes with tradeoffs, storing account balances in the system pallet stores
-     * `frame_system` data alongside the account data contrary to storing account balances in the
-     * `Balances` pallet, which uses a `StorageMap` to store balances data only.
-     * NOTE: This is only used in the case that this pallet is used to store balances.
-     *
-     * @param {AccountId32Like} arg
-     * @param {Callback<PalletBalancesAccountData> =} callback
-     **/
-    account: GenericStorageQuery<
-      Rv,
-      (arg: AccountId32Like) => PalletBalancesAccountData,
-      AccountId32
-    >;
-
-    /**
-     * Any liquidity locks on some account balances.
-     * NOTE: Should only be accessed when setting, changing and freeing a lock.
-     *
-     * Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
-     *
-     * @param {AccountId32Like} arg
-     * @param {Callback<Array<PalletBalancesBalanceLock>> =} callback
-     **/
-    locks: GenericStorageQuery<
-      Rv,
-      (arg: AccountId32Like) => Array<PalletBalancesBalanceLock>,
-      AccountId32
-    >;
-
-    /**
-     * Named reserves on some account balances.
-     *
-     * Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
-     *
-     * @param {AccountId32Like} arg
-     * @param {Callback<Array<PalletBalancesReserveData>> =} callback
-     **/
-    reserves: GenericStorageQuery<
-      Rv,
-      (arg: AccountId32Like) => Array<PalletBalancesReserveData>,
-      AccountId32
-    >;
-
-    /**
-     * Holds on account balances.
-     *
-     * @param {AccountId32Like} arg
-     * @param {Callback<Array<FrameSupportTokensMiscIdAmount>> =} callback
-     **/
-    holds: GenericStorageQuery<
-      Rv,
-      (arg: AccountId32Like) => Array<FrameSupportTokensMiscIdAmount>,
-      AccountId32
-    >;
-
-    /**
-     * Freeze locks on account balances.
-     *
-     * @param {AccountId32Like} arg
-     * @param {Callback<Array<FrameSupportTokensMiscIdAmountRuntimeFreezeReason>> =} callback
-     **/
-    freezes: GenericStorageQuery<
-      Rv,
-      (
-        arg: AccountId32Like,
-      ) => Array<FrameSupportTokensMiscIdAmountRuntimeFreezeReason>,
-      AccountId32
     >;
 
     /**
@@ -563,67 +452,6 @@ export interface ChainStorage<Rv extends RpcVersion>
     [storage: string]: GenericStorageQuery<Rv>;
   };
   /**
-   * Pallet `ImOnline`'s storage queries
-   **/
-  imOnline: {
-    /**
-     * The block number after which it's ok to send heartbeats in the current
-     * session.
-     *
-     * At the beginning of each session we set this to a value that should fall
-     * roughly in the middle of the session duration. The idea is to first wait for
-     * the validators to produce a block in the current session, so that the
-     * heartbeat later on will not be necessary.
-     *
-     * This value will only be used as a fallback if we fail to get a proper session
-     * progress estimate from `NextSessionRotation`, as those estimates should be
-     * more accurate then the value we calculate for `HeartbeatAfter`.
-     *
-     * @param {Callback<number> =} callback
-     **/
-    heartbeatAfter: GenericStorageQuery<Rv, () => number>;
-
-    /**
-     * The current set of keys that may issue a heartbeat.
-     *
-     * @param {Callback<Array<PalletImOnlineSr25519AppSr25519Public>> =} callback
-     **/
-    keys: GenericStorageQuery<
-      Rv,
-      () => Array<PalletImOnlineSr25519AppSr25519Public>
-    >;
-
-    /**
-     * For each session index, we keep a mapping of `SessionIndex` and `AuthIndex`.
-     *
-     * @param {[number, number]} arg
-     * @param {Callback<boolean | undefined> =} callback
-     **/
-    receivedHeartbeats: GenericStorageQuery<
-      Rv,
-      (arg: [number, number]) => boolean | undefined,
-      [number, number]
-    >;
-
-    /**
-     * For each session index, we keep a mapping of `ValidatorId<T>` to the
-     * number of blocks authored by the given authority.
-     *
-     * @param {[number, AccountId32Like]} arg
-     * @param {Callback<number> =} callback
-     **/
-    authoredBlocks: GenericStorageQuery<
-      Rv,
-      (arg: [number, AccountId32Like]) => number,
-      [number, AccountId32]
-    >;
-
-    /**
-     * Generic pallet storage query
-     **/
-    [storage: string]: GenericStorageQuery<Rv>;
-  };
-  /**
    * Pallet `Authorship`'s storage queries
    **/
   authorship: {
@@ -633,6 +461,143 @@ export interface ChainStorage<Rv extends RpcVersion>
      * @param {Callback<AccountId32 | undefined> =} callback
      **/
     author: GenericStorageQuery<Rv, () => AccountId32 | undefined>;
+
+    /**
+     * Generic pallet storage query
+     **/
+    [storage: string]: GenericStorageQuery<Rv>;
+  };
+  /**
+   * Pallet `Balances`'s storage queries
+   **/
+  balances: {
+    /**
+     * The total units issued in the system.
+     *
+     * @param {Callback<bigint> =} callback
+     **/
+    totalIssuance: GenericStorageQuery<Rv, () => bigint>;
+
+    /**
+     * The total units of outstanding deactivated balance in the system.
+     *
+     * @param {Callback<bigint> =} callback
+     **/
+    inactiveIssuance: GenericStorageQuery<Rv, () => bigint>;
+
+    /**
+     * The Balances pallet example of storing the balance of an account.
+     *
+     * # Example
+     *
+     * ```nocompile
+     * impl pallet_balances::Config for Runtime {
+     * type AccountStore = StorageMapShim<Self::Account<Runtime>, frame_system::Provider<Runtime>, AccountId, Self::AccountData<Balance>>
+     * }
+     * ```
+     *
+     * You can also store the balance of an account in the `System` pallet.
+     *
+     * # Example
+     *
+     * ```nocompile
+     * impl pallet_balances::Config for Runtime {
+     * type AccountStore = System
+     * }
+     * ```
+     *
+     * But this comes with tradeoffs, storing account balances in the system pallet stores
+     * `frame_system` data alongside the account data contrary to storing account balances in the
+     * `Balances` pallet, which uses a `StorageMap` to store balances data only.
+     * NOTE: This is only used in the case that this pallet is used to store balances.
+     *
+     * @param {AccountId32Like} arg
+     * @param {Callback<PalletBalancesAccountData> =} callback
+     **/
+    account: GenericStorageQuery<
+      Rv,
+      (arg: AccountId32Like) => PalletBalancesAccountData,
+      AccountId32
+    >;
+
+    /**
+     * Any liquidity locks on some account balances.
+     * NOTE: Should only be accessed when setting, changing and freeing a lock.
+     *
+     * Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
+     *
+     * @param {AccountId32Like} arg
+     * @param {Callback<Array<PalletBalancesBalanceLock>> =} callback
+     **/
+    locks: GenericStorageQuery<
+      Rv,
+      (arg: AccountId32Like) => Array<PalletBalancesBalanceLock>,
+      AccountId32
+    >;
+
+    /**
+     * Named reserves on some account balances.
+     *
+     * Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
+     *
+     * @param {AccountId32Like} arg
+     * @param {Callback<Array<PalletBalancesReserveData>> =} callback
+     **/
+    reserves: GenericStorageQuery<
+      Rv,
+      (arg: AccountId32Like) => Array<PalletBalancesReserveData>,
+      AccountId32
+    >;
+
+    /**
+     * Holds on account balances.
+     *
+     * @param {AccountId32Like} arg
+     * @param {Callback<Array<FrameSupportTokensMiscIdAmount>> =} callback
+     **/
+    holds: GenericStorageQuery<
+      Rv,
+      (arg: AccountId32Like) => Array<FrameSupportTokensMiscIdAmount>,
+      AccountId32
+    >;
+
+    /**
+     * Freeze locks on account balances.
+     *
+     * @param {AccountId32Like} arg
+     * @param {Callback<Array<FrameSupportTokensMiscIdAmountRuntimeFreezeReason>> =} callback
+     **/
+    freezes: GenericStorageQuery<
+      Rv,
+      (
+        arg: AccountId32Like,
+      ) => Array<FrameSupportTokensMiscIdAmountRuntimeFreezeReason>,
+      AccountId32
+    >;
+
+    /**
+     * Generic pallet storage query
+     **/
+    [storage: string]: GenericStorageQuery<Rv>;
+  };
+  /**
+   * Pallet `TransactionPayment`'s storage queries
+   **/
+  transactionPayment: {
+    /**
+     *
+     * @param {Callback<FixedU128> =} callback
+     **/
+    nextFeeMultiplier: GenericStorageQuery<Rv, () => FixedU128>;
+
+    /**
+     *
+     * @param {Callback<PalletTransactionPaymentReleases> =} callback
+     **/
+    storageVersion: GenericStorageQuery<
+      Rv,
+      () => PalletTransactionPaymentReleases
+    >;
 
     /**
      * Generic pallet storage query
@@ -819,6 +784,83 @@ export interface ChainStorage<Rv extends RpcVersion>
     [storage: string]: GenericStorageQuery<Rv>;
   };
   /**
+   * Pallet `Sudo`'s storage queries
+   **/
+  sudo: {
+    /**
+     * The `AccountId` of the sudo key.
+     *
+     * @param {Callback<AccountId32 | undefined> =} callback
+     **/
+    key: GenericStorageQuery<Rv, () => AccountId32 | undefined>;
+
+    /**
+     * Generic pallet storage query
+     **/
+    [storage: string]: GenericStorageQuery<Rv>;
+  };
+  /**
+   * Pallet `ImOnline`'s storage queries
+   **/
+  imOnline: {
+    /**
+     * The block number after which it's ok to send heartbeats in the current
+     * session.
+     *
+     * At the beginning of each session we set this to a value that should fall
+     * roughly in the middle of the session duration. The idea is to first wait for
+     * the validators to produce a block in the current session, so that the
+     * heartbeat later on will not be necessary.
+     *
+     * This value will only be used as a fallback if we fail to get a proper session
+     * progress estimate from `NextSessionRotation`, as those estimates should be
+     * more accurate then the value we calculate for `HeartbeatAfter`.
+     *
+     * @param {Callback<number> =} callback
+     **/
+    heartbeatAfter: GenericStorageQuery<Rv, () => number>;
+
+    /**
+     * The current set of keys that may issue a heartbeat.
+     *
+     * @param {Callback<Array<PalletImOnlineSr25519AppSr25519Public>> =} callback
+     **/
+    keys: GenericStorageQuery<
+      Rv,
+      () => Array<PalletImOnlineSr25519AppSr25519Public>
+    >;
+
+    /**
+     * For each session index, we keep a mapping of `SessionIndex` and `AuthIndex`.
+     *
+     * @param {[number, number]} arg
+     * @param {Callback<boolean | undefined> =} callback
+     **/
+    receivedHeartbeats: GenericStorageQuery<
+      Rv,
+      (arg: [number, number]) => boolean | undefined,
+      [number, number]
+    >;
+
+    /**
+     * For each session index, we keep a mapping of `ValidatorId<T>` to the
+     * number of blocks authored by the given authority.
+     *
+     * @param {[number, AccountId32Like]} arg
+     * @param {Callback<number> =} callback
+     **/
+    authoredBlocks: GenericStorageQuery<
+      Rv,
+      (arg: [number, AccountId32Like]) => number,
+      [number, AccountId32]
+    >;
+
+    /**
+     * Generic pallet storage query
+     **/
+    [storage: string]: GenericStorageQuery<Rv>;
+  };
+  /**
    * Pallet `AuthorityDiscovery`'s storage queries
    **/
   authorityDiscovery: {
@@ -845,6 +887,34 @@ export interface ChainStorage<Rv extends RpcVersion>
     [storage: string]: GenericStorageQuery<Rv>;
   };
   /**
+   * Pallet `Historical`'s storage queries
+   **/
+  historical: {
+    /**
+     * Mapping from historical session indices to session-data root hash and validator count.
+     *
+     * @param {number} arg
+     * @param {Callback<[H256, number] | undefined> =} callback
+     **/
+    historicalSessions: GenericStorageQuery<
+      Rv,
+      (arg: number) => [H256, number] | undefined,
+      number
+    >;
+
+    /**
+     * The range of historical sessions we store. [first, last)
+     *
+     * @param {Callback<[number, number] | undefined> =} callback
+     **/
+    storedRange: GenericStorageQuery<Rv, () => [number, number] | undefined>;
+
+    /**
+     * Generic pallet storage query
+     **/
+    [storage: string]: GenericStorageQuery<Rv>;
+  };
+  /**
    * Pallet `Identity`'s storage queries
    **/
   identity: {
@@ -855,13 +925,23 @@ export interface ChainStorage<Rv extends RpcVersion>
      * TWOX-NOTE: OK ― `AccountId` is a secure hash.
      *
      * @param {AccountId32Like} arg
-     * @param {Callback<[PalletIdentityRegistration, Bytes | undefined] | undefined> =} callback
+     * @param {Callback<PalletIdentityRegistration | undefined> =} callback
      **/
     identityOf: GenericStorageQuery<
       Rv,
-      (
-        arg: AccountId32Like,
-      ) => [PalletIdentityRegistration, Bytes | undefined] | undefined,
+      (arg: AccountId32Like) => PalletIdentityRegistration | undefined,
+      AccountId32
+    >;
+
+    /**
+     * Identifies the primary username of an account.
+     *
+     * @param {AccountId32Like} arg
+     * @param {Callback<Bytes | undefined> =} callback
+     **/
+    usernameOf: GenericStorageQuery<
+      Rv,
+      (arg: AccountId32Like) => Bytes | undefined,
       AccountId32
     >;
 
@@ -910,28 +990,29 @@ export interface ChainStorage<Rv extends RpcVersion>
     /**
      * A map of the accounts who are authorized to grant usernames.
      *
-     * @param {AccountId32Like} arg
+     * @param {BytesLike} arg
      * @param {Callback<PalletIdentityAuthorityProperties | undefined> =} callback
      **/
-    usernameAuthorities: GenericStorageQuery<
+    authorityOf: GenericStorageQuery<
       Rv,
-      (arg: AccountId32Like) => PalletIdentityAuthorityProperties | undefined,
-      AccountId32
+      (arg: BytesLike) => PalletIdentityAuthorityProperties | undefined,
+      Bytes
     >;
 
     /**
-     * Reverse lookup from `username` to the `AccountId` that has registered it. The value should
-     * be a key in the `IdentityOf` map, but it may not if the user has cleared their identity.
+     * Reverse lookup from `username` to the `AccountId` that has registered it and the provider of
+     * the username. The `owner` value should be a key in the `UsernameOf` map, but it may not if
+     * the user has cleared their username or it has been removed.
      *
-     * Multiple usernames may map to the same `AccountId`, but `IdentityOf` will only map to one
+     * Multiple usernames may map to the same `AccountId`, but `UsernameOf` will only map to one
      * primary username.
      *
      * @param {BytesLike} arg
-     * @param {Callback<AccountId32 | undefined> =} callback
+     * @param {Callback<PalletIdentityUsernameInformation | undefined> =} callback
      **/
-    accountOfUsername: GenericStorageQuery<
+    usernameInfoOf: GenericStorageQuery<
       Rv,
-      (arg: BytesLike) => AccountId32 | undefined,
+      (arg: BytesLike) => PalletIdentityUsernameInformation | undefined,
       Bytes
     >;
 
@@ -939,16 +1020,33 @@ export interface ChainStorage<Rv extends RpcVersion>
      * Usernames that an authority has granted, but that the account controller has not confirmed
      * that they want it. Used primarily in cases where the `AccountId` cannot provide a signature
      * because they are a pure proxy, multisig, etc. In order to confirm it, they should call
-     * [`Call::accept_username`].
+     * [accept_username](`Call::accept_username`).
      *
      * First tuple item is the account and second is the acceptance deadline.
      *
      * @param {BytesLike} arg
-     * @param {Callback<[AccountId32, number] | undefined> =} callback
+     * @param {Callback<[AccountId32, number, PalletIdentityProvider] | undefined> =} callback
      **/
     pendingUsernames: GenericStorageQuery<
       Rv,
-      (arg: BytesLike) => [AccountId32, number] | undefined,
+      (
+        arg: BytesLike,
+      ) => [AccountId32, number, PalletIdentityProvider] | undefined,
+      Bytes
+    >;
+
+    /**
+     * Usernames for which the authority that granted them has started the removal process by
+     * unbinding them. Each unbinding username maps to its grace period expiry, which is the first
+     * block in which the username could be deleted through a
+     * [remove_username](`Call::remove_username`) call.
+     *
+     * @param {BytesLike} arg
+     * @param {Callback<number | undefined> =} callback
+     **/
+    unbindingUsernames: GenericStorageQuery<
+      Rv,
+      (arg: BytesLike) => number | undefined,
       Bytes
     >;
 
@@ -1012,15 +1110,43 @@ export interface ChainStorage<Rv extends RpcVersion>
     [storage: string]: GenericStorageQuery<Rv>;
   };
   /**
-   * Pallet `Sudo`'s storage queries
+   * Pallet `Preimage`'s storage queries
    **/
-  sudo: {
+  preimage: {
     /**
-     * The `AccountId` of the sudo key.
+     * The request status of a given hash.
      *
-     * @param {Callback<AccountId32 | undefined> =} callback
+     * @param {H256} arg
+     * @param {Callback<PalletPreimageOldRequestStatus | undefined> =} callback
      **/
-    key: GenericStorageQuery<Rv, () => AccountId32 | undefined>;
+    statusFor: GenericStorageQuery<
+      Rv,
+      (arg: H256) => PalletPreimageOldRequestStatus | undefined,
+      H256
+    >;
+
+    /**
+     * The request status of a given hash.
+     *
+     * @param {H256} arg
+     * @param {Callback<PalletPreimageRequestStatus | undefined> =} callback
+     **/
+    requestStatusFor: GenericStorageQuery<
+      Rv,
+      (arg: H256) => PalletPreimageRequestStatus | undefined,
+      H256
+    >;
+
+    /**
+     *
+     * @param {[H256, number]} arg
+     * @param {Callback<Bytes | undefined> =} callback
+     **/
+    preimageFor: GenericStorageQuery<
+      Rv,
+      (arg: [H256, number]) => Bytes | undefined,
+      [H256, number]
+    >;
 
     /**
      * Generic pallet storage query
@@ -1085,134 +1211,33 @@ export interface ChainStorage<Rv extends RpcVersion>
     [storage: string]: GenericStorageQuery<Rv>;
   };
   /**
-   * Pallet `TransactionPayment`'s storage queries
+   * Pallet `SafeMode`'s storage queries
    **/
-  transactionPayment: {
+  safeMode: {
     /**
+     * Contains the last block number that the safe-mode will remain entered in.
      *
-     * @param {Callback<FixedU128> =} callback
+     * Set to `None` when safe-mode is exited.
+     *
+     * Safe-mode is automatically exited when the current block number exceeds this value.
+     *
+     * @param {Callback<number | undefined> =} callback
      **/
-    nextFeeMultiplier: GenericStorageQuery<Rv, () => FixedU128>;
+    enteredUntil: GenericStorageQuery<Rv, () => number | undefined>;
 
     /**
+     * Holds the reserve that was taken from an account at a specific block number.
      *
-     * @param {Callback<PalletTransactionPaymentReleases> =} callback
+     * This helps governance to have an overview of outstanding deposits that should be returned or
+     * slashed.
+     *
+     * @param {[AccountId32Like, number]} arg
+     * @param {Callback<bigint | undefined> =} callback
      **/
-    storageVersion: GenericStorageQuery<
+    deposits: GenericStorageQuery<
       Rv,
-      () => PalletTransactionPaymentReleases
-    >;
-
-    /**
-     * Generic pallet storage query
-     **/
-    [storage: string]: GenericStorageQuery<Rv>;
-  };
-  /**
-   * Pallet `Historical`'s storage queries
-   **/
-  historical: {
-    /**
-     * Mapping from historical session indices to session-data root hash and validator count.
-     *
-     * @param {number} arg
-     * @param {Callback<[H256, number] | undefined> =} callback
-     **/
-    historicalSessions: GenericStorageQuery<
-      Rv,
-      (arg: number) => [H256, number] | undefined,
-      number
-    >;
-
-    /**
-     * The range of historical sessions we store. [first, last)
-     *
-     * @param {Callback<[number, number] | undefined> =} callback
-     **/
-    storedRange: GenericStorageQuery<Rv, () => [number, number] | undefined>;
-
-    /**
-     * Generic pallet storage query
-     **/
-    [storage: string]: GenericStorageQuery<Rv>;
-  };
-  /**
-   * Pallet `Preimage`'s storage queries
-   **/
-  preimage: {
-    /**
-     * The request status of a given hash.
-     *
-     * @param {H256} arg
-     * @param {Callback<PalletPreimageOldRequestStatus | undefined> =} callback
-     **/
-    statusFor: GenericStorageQuery<
-      Rv,
-      (arg: H256) => PalletPreimageOldRequestStatus | undefined,
-      H256
-    >;
-
-    /**
-     * The request status of a given hash.
-     *
-     * @param {H256} arg
-     * @param {Callback<PalletPreimageRequestStatus | undefined> =} callback
-     **/
-    requestStatusFor: GenericStorageQuery<
-      Rv,
-      (arg: H256) => PalletPreimageRequestStatus | undefined,
-      H256
-    >;
-
-    /**
-     *
-     * @param {[H256, number]} arg
-     * @param {Callback<Bytes | undefined> =} callback
-     **/
-    preimageFor: GenericStorageQuery<
-      Rv,
-      (arg: [H256, number]) => Bytes | undefined,
-      [H256, number]
-    >;
-
-    /**
-     * Generic pallet storage query
-     **/
-    [storage: string]: GenericStorageQuery<Rv>;
-  };
-  /**
-   * Pallet `Stakeholders`'s storage queries
-   **/
-  stakeholders: {
-    /**
-     *
-     * @param {H256} arg
-     * @param {Callback<PalletMiddsMiddsWrapper | undefined> =} callback
-     **/
-    pendingMidds: GenericStorageQuery<
-      Rv,
-      (arg: H256) => PalletMiddsMiddsWrapper | undefined,
-      H256
-    >;
-
-    /**
-     * Generic pallet storage query
-     **/
-    [storage: string]: GenericStorageQuery<Rv>;
-  };
-  /**
-   * Pallet `MusicalWorks`'s storage queries
-   **/
-  musicalWorks: {
-    /**
-     *
-     * @param {H256} arg
-     * @param {Callback<PalletMiddsMiddsWrapperSong | undefined> =} callback
-     **/
-    pendingMidds: GenericStorageQuery<
-      Rv,
-      (arg: H256) => PalletMiddsMiddsWrapperSong | undefined,
-      H256
+      (arg: [AccountId32Like, number]) => bigint | undefined,
+      [AccountId32, number]
     >;
 
     /**
@@ -1248,6 +1273,46 @@ export interface ChainStorage<Rv extends RpcVersion>
      * @param {Callback<H256 | undefined> =} callback
      **/
     nodes: GenericStorageQuery<Rv, (arg: bigint) => H256 | undefined, bigint>;
+
+    /**
+     * Generic pallet storage query
+     **/
+    [storage: string]: GenericStorageQuery<Rv>;
+  };
+  /**
+   * Pallet `Stakeholders`'s storage queries
+   **/
+  stakeholders: {
+    /**
+     *
+     * @param {H256} arg
+     * @param {Callback<PalletMiddsMiddsWrapper | undefined> =} callback
+     **/
+    pendingMidds: GenericStorageQuery<
+      Rv,
+      (arg: H256) => PalletMiddsMiddsWrapper | undefined,
+      H256
+    >;
+
+    /**
+     * Generic pallet storage query
+     **/
+    [storage: string]: GenericStorageQuery<Rv>;
+  };
+  /**
+   * Pallet `MusicalWorks`'s storage queries
+   **/
+  musicalWorks: {
+    /**
+     *
+     * @param {H256} arg
+     * @param {Callback<PalletMiddsMiddsWrapperMusicalWork | undefined> =} callback
+     **/
+    pendingMidds: GenericStorageQuery<
+      Rv,
+      (arg: H256) => PalletMiddsMiddsWrapperMusicalWork | undefined,
+      H256
+    >;
 
     /**
      * Generic pallet storage query

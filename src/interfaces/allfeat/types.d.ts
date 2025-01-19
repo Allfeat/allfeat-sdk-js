@@ -3,20 +3,20 @@
 import type {
   Phase,
   H256,
-  DispatchInfo,
   DispatchError,
   AccountId32,
-  FixedBytes,
   Result,
+  FixedBytes,
   Bytes,
   BytesLike,
+  Header,
   MultiAddress,
   MultiAddressLike,
   AccountId32Like,
-  Header,
   Data,
   Percent,
   Era,
+  UncheckedExtrinsic,
 } from 'dedot/codecs';
 
 export type FrameSystemAccountInfo = {
@@ -52,19 +52,20 @@ export type FrameSystemEventRecord = {
 
 export type MelodieRuntimeRuntimeEvent =
   | { pallet: 'System'; palletEvent: FrameSystemEvent }
+  | { pallet: 'Utility'; palletEvent: PalletUtilityEvent }
   | { pallet: 'Balances'; palletEvent: PalletBalancesEvent }
-  | { pallet: 'ImOnline'; palletEvent: PalletImOnlineEvent }
+  | { pallet: 'TransactionPayment'; palletEvent: PalletTransactionPaymentEvent }
   | { pallet: 'ValidatorSet'; palletEvent: SubstrateValidatorSetEvent }
   | { pallet: 'Session'; palletEvent: PalletSessionEvent }
   | { pallet: 'Grandpa'; palletEvent: PalletGrandpaEvent }
-  | { pallet: 'Utility'; palletEvent: PalletUtilityEvent }
+  | { pallet: 'Sudo'; palletEvent: PalletSudoEvent }
+  | { pallet: 'ImOnline'; palletEvent: PalletImOnlineEvent }
   | { pallet: 'Identity'; palletEvent: PalletIdentityEvent }
   | { pallet: 'Scheduler'; palletEvent: PalletSchedulerEvent }
-  | { pallet: 'Sudo'; palletEvent: PalletSudoEvent }
+  | { pallet: 'Preimage'; palletEvent: PalletPreimageEvent }
   | { pallet: 'Proxy'; palletEvent: PalletProxyEvent }
   | { pallet: 'Multisig'; palletEvent: PalletMultisigEvent }
-  | { pallet: 'TransactionPayment'; palletEvent: PalletTransactionPaymentEvent }
-  | { pallet: 'Preimage'; palletEvent: PalletPreimageEvent }
+  | { pallet: 'SafeMode'; palletEvent: PalletSafeModeEvent }
   | { pallet: 'Stakeholders'; palletEvent: PalletMiddsEvent }
   | { pallet: 'MusicalWorks'; palletEvent: PalletMiddsEvent };
 
@@ -75,13 +76,19 @@ export type FrameSystemEvent =
   /**
    * An extrinsic completed successfully.
    **/
-  | { name: 'ExtrinsicSuccess'; data: { dispatchInfo: DispatchInfo } }
+  | {
+      name: 'ExtrinsicSuccess';
+      data: { dispatchInfo: FrameSystemDispatchEventInfo };
+    }
   /**
    * An extrinsic failed.
    **/
   | {
       name: 'ExtrinsicFailed';
-      data: { dispatchError: DispatchError; dispatchInfo: DispatchInfo };
+      data: {
+        dispatchError: DispatchError;
+        dispatchInfo: FrameSystemDispatchEventInfo;
+      };
     }
   /**
    * `:code` was updated.
@@ -122,6 +129,12 @@ export type FrameSystemEvent =
       data: { codeHash: H256; checkVersion: boolean };
     };
 
+export type FrameSystemDispatchEventInfo = {
+  weight: SpWeightsWeightV2Weight;
+  class: FrameSupportDispatchDispatchClass;
+  paysFee: FrameSupportDispatchPays;
+};
+
 export type FrameSupportDispatchDispatchClass =
   | 'Normal'
   | 'Operational'
@@ -129,7 +142,53 @@ export type FrameSupportDispatchDispatchClass =
 
 export type FrameSupportDispatchPays = 'Yes' | 'No';
 
+export type SpRuntimeProvingTrieTrieError =
+  | 'InvalidStateRoot'
+  | 'IncompleteDatabase'
+  | 'ValueAtIncompleteKey'
+  | 'DecoderError'
+  | 'InvalidHash'
+  | 'DuplicateKey'
+  | 'ExtraneousNode'
+  | 'ExtraneousValue'
+  | 'ExtraneousHashReference'
+  | 'InvalidChildReference'
+  | 'ValueMismatch'
+  | 'IncompleteProof'
+  | 'RootMismatch'
+  | 'DecodeError';
+
 export type MelodieRuntimeRuntimeTask = null;
+
+/**
+ * The `Event` enum of this pallet
+ **/
+export type PalletUtilityEvent =
+  /**
+   * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
+   * well as the error.
+   **/
+  | { name: 'BatchInterrupted'; data: { index: number; error: DispatchError } }
+  /**
+   * Batch of dispatches completed fully with no error.
+   **/
+  | { name: 'BatchCompleted' }
+  /**
+   * Batch of dispatches completed but has errors.
+   **/
+  | { name: 'BatchCompletedWithErrors' }
+  /**
+   * A single item within a Batch of dispatches has completed with no error.
+   **/
+  | { name: 'ItemCompleted' }
+  /**
+   * A single item within a Batch of dispatches has completed with error.
+   **/
+  | { name: 'ItemFailed'; data: { error: DispatchError } }
+  /**
+   * A call was dispatched.
+   **/
+  | { name: 'DispatchedAs'; data: { result: Result<[], DispatchError> } };
 
 /**
  * The `Event` enum of this pallet
@@ -242,27 +301,15 @@ export type FrameSupportTokensMiscBalanceStatus = 'Free' | 'Reserved';
 /**
  * The `Event` enum of this pallet
  **/
-export type PalletImOnlineEvent =
+export type PalletTransactionPaymentEvent =
   /**
-   * A new heartbeat was received from `AuthorityId`.
+   * A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
+   * has been paid by `who`.
    **/
-  | {
-      name: 'HeartbeatReceived';
-      data: { authorityId: PalletImOnlineSr25519AppSr25519Public };
-    }
-  /**
-   * At the end of the session, no offence was committed.
-   **/
-  | { name: 'AllGood' }
-  /**
-   * At the end of the session, at least one validator was found to be offline.
-   **/
-  | {
-      name: 'SomeOffline';
-      data: { offline: Array<[AccountId32, AccountId32]> };
-    };
-
-export type PalletImOnlineSr25519AppSr25519Public = FixedBytes<32>;
+  {
+    name: 'TransactionFeePaid';
+    data: { who: AccountId32; actualFee: bigint; tip: bigint };
+  };
 
 /**
  * The `Event` enum of this pallet
@@ -312,32 +359,77 @@ export type SpConsensusGrandpaAppPublic = FixedBytes<32>;
 /**
  * The `Event` enum of this pallet
  **/
-export type PalletUtilityEvent =
+export type PalletSudoEvent =
   /**
-   * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
-   * well as the error.
+   * A sudo call just took place.
    **/
-  | { name: 'BatchInterrupted'; data: { index: number; error: DispatchError } }
+  | {
+      name: 'Sudid';
+      data: {
+        /**
+         * The result of the call made by the sudo user.
+         **/
+        sudoResult: Result<[], DispatchError>;
+      };
+    }
   /**
-   * Batch of dispatches completed fully with no error.
+   * The sudo key has been updated.
    **/
-  | { name: 'BatchCompleted' }
+  | {
+      name: 'KeyChanged';
+      data: {
+        /**
+         * The old sudo key (if one was previously set).
+         **/
+        old?: AccountId32 | undefined;
+
+        /**
+         * The new sudo key (if one was set).
+         **/
+        new: AccountId32;
+      };
+    }
   /**
-   * Batch of dispatches completed but has errors.
+   * The key was permanently removed.
    **/
-  | { name: 'BatchCompletedWithErrors' }
+  | { name: 'KeyRemoved' }
   /**
-   * A single item within a Batch of dispatches has completed with no error.
+   * A [sudo_as](Pallet::sudo_as) call just took place.
    **/
-  | { name: 'ItemCompleted' }
+  | {
+      name: 'SudoAsDone';
+      data: {
+        /**
+         * The result of the call made by the sudo user.
+         **/
+        sudoResult: Result<[], DispatchError>;
+      };
+    };
+
+/**
+ * The `Event` enum of this pallet
+ **/
+export type PalletImOnlineEvent =
   /**
-   * A single item within a Batch of dispatches has completed with error.
+   * A new heartbeat was received from `AuthorityId`.
    **/
-  | { name: 'ItemFailed'; data: { error: DispatchError } }
+  | {
+      name: 'HeartbeatReceived';
+      data: { authorityId: PalletImOnlineSr25519AppSr25519Public };
+    }
   /**
-   * A call was dispatched.
+   * At the end of the session, no offence was committed.
    **/
-  | { name: 'DispatchedAs'; data: { result: Result<[], DispatchError> } };
+  | { name: 'AllGood' }
+  /**
+   * At the end of the session, at least one validator was found to be offline.
+   **/
+  | {
+      name: 'SomeOffline';
+      data: { offline: Array<[AccountId32, AccountId32]> };
+    };
+
+export type PalletImOnlineSr25519AppSr25519Public = FixedBytes<32>;
 
 /**
  * The `Event` enum of this pallet
@@ -388,6 +480,20 @@ export type PalletIdentityEvent =
       data: { sub: AccountId32; main: AccountId32; deposit: bigint };
     }
   /**
+   * An account's sub-identities were set (in bulk).
+   **/
+  | {
+      name: 'SubIdentitiesSet';
+      data: { main: AccountId32; numberOfSubs: number; newDeposit: bigint };
+    }
+  /**
+   * A given sub-account's associated name was changed by its super-identity.
+   **/
+  | {
+      name: 'SubIdentityRenamed';
+      data: { sub: AccountId32; main: AccountId32 };
+    }
+  /**
    * A sub-identity was removed from an identity and the deposit freed.
    **/
   | {
@@ -436,7 +542,19 @@ export type PalletIdentityEvent =
   | {
       name: 'DanglingUsernameRemoved';
       data: { who: AccountId32; username: Bytes };
-    };
+    }
+  /**
+   * A username has been unbound.
+   **/
+  | { name: 'UsernameUnbound'; data: { username: Bytes } }
+  /**
+   * A username has been removed.
+   **/
+  | { name: 'UsernameRemoved'; data: { username: Bytes } }
+  /**
+   * A username has been killed.
+   **/
+  | { name: 'UsernameKilled'; data: { username: Bytes } };
 
 /**
  * Events type.
@@ -513,52 +631,19 @@ export type PalletSchedulerEvent =
 /**
  * The `Event` enum of this pallet
  **/
-export type PalletSudoEvent =
+export type PalletPreimageEvent =
   /**
-   * A sudo call just took place.
+   * A preimage has been noted.
    **/
-  | {
-      name: 'Sudid';
-      data: {
-        /**
-         * The result of the call made by the sudo user.
-         **/
-        sudoResult: Result<[], DispatchError>;
-      };
-    }
+  | { name: 'Noted'; data: { hash: H256 } }
   /**
-   * The sudo key has been updated.
+   * A preimage has been requested.
    **/
-  | {
-      name: 'KeyChanged';
-      data: {
-        /**
-         * The old sudo key (if one was previously set).
-         **/
-        old?: AccountId32 | undefined;
-
-        /**
-         * The new sudo key (if one was set).
-         **/
-        new: AccountId32;
-      };
-    }
+  | { name: 'Requested'; data: { hash: H256 } }
   /**
-   * The key was permanently removed.
+   * A preimage has ben cleared.
    **/
-  | { name: 'KeyRemoved' }
-  /**
-   * A [sudo_as](Pallet::sudo_as) call just took place.
-   **/
-  | {
-      name: 'SudoAsDone';
-      data: {
-        /**
-         * The result of the call made by the sudo user.
-         **/
-        sudoResult: Result<[], DispatchError>;
-      };
-    };
+  | { name: 'Cleared'; data: { hash: H256 } };
 
 /**
  * The `Event` enum of this pallet
@@ -673,32 +758,45 @@ export type PalletMultisigTimepoint = { height: number; index: number };
 /**
  * The `Event` enum of this pallet
  **/
-export type PalletTransactionPaymentEvent =
+export type PalletSafeModeEvent =
   /**
-   * A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
-   * has been paid by `who`.
+   * The safe-mode was entered until inclusively this block.
    **/
-  {
-    name: 'TransactionFeePaid';
-    data: { who: AccountId32; actualFee: bigint; tip: bigint };
-  };
+  | { name: 'Entered'; data: { until: number } }
+  /**
+   * The safe-mode was extended until inclusively this block.
+   **/
+  | { name: 'Extended'; data: { until: number } }
+  /**
+   * Exited the safe-mode for a specific reason.
+   **/
+  | { name: 'Exited'; data: { reason: PalletSafeModeExitReason } }
+  /**
+   * An account reserved funds for either entering or extending the safe-mode.
+   **/
+  | { name: 'DepositPlaced'; data: { account: AccountId32; amount: bigint } }
+  /**
+   * An account had a reserve released that was reserved.
+   **/
+  | { name: 'DepositReleased'; data: { account: AccountId32; amount: bigint } }
+  /**
+   * An account had reserve slashed that was reserved.
+   **/
+  | { name: 'DepositSlashed'; data: { account: AccountId32; amount: bigint } }
+  /**
+   * Could not hold funds for entering or extending the safe-mode.
+   *
+   * This error comes from the underlying `Currency`.
+   **/
+  | { name: 'CannotDeposit' }
+  /**
+   * Could not release funds for entering or extending the safe-mode.
+   *
+   * This error comes from the underlying `Currency`.
+   **/
+  | { name: 'CannotRelease' };
 
-/**
- * The `Event` enum of this pallet
- **/
-export type PalletPreimageEvent =
-  /**
-   * A preimage has been noted.
-   **/
-  | { name: 'Noted'; data: { hash: H256 } }
-  /**
-   * A preimage has been requested.
-   **/
-  | { name: 'Requested'; data: { hash: H256 } }
-  /**
-   * A preimage has ben cleared.
-   **/
-  | { name: 'Cleared'; data: { hash: H256 } };
+export type PalletSafeModeExitReason = 'Timeout' | 'Force';
 
 /**
  * The `Event` enum of this pallet
@@ -954,921 +1052,6 @@ export type FrameSystemError =
    **/
   | 'Unauthorized';
 
-export type PalletBalancesBalanceLock = {
-  id: FixedBytes<8>;
-  amount: bigint;
-  reasons: PalletBalancesReasons;
-};
-
-export type PalletBalancesReasons = 'Fee' | 'Misc' | 'All';
-
-export type PalletBalancesReserveData = { id: FixedBytes<8>; amount: bigint };
-
-export type FrameSupportTokensMiscIdAmount = {
-  id: MelodieRuntimeRuntimeHoldReason;
-  amount: bigint;
-};
-
-export type MelodieRuntimeRuntimeHoldReason =
-  | { type: 'Preimage'; value: PalletPreimageHoldReason }
-  | { type: 'Stakeholders'; value: PalletMiddsHoldReason }
-  | { type: 'MusicalWorks'; value: PalletMiddsHoldReason };
-
-export type PalletPreimageHoldReason = 'Preimage';
-
-export type PalletMiddsHoldReason = 'MiddsRegistration';
-
-export type FrameSupportTokensMiscIdAmountRuntimeFreezeReason = {
-  id: MelodieRuntimeRuntimeFreezeReason;
-  amount: bigint;
-};
-
-export type MelodieRuntimeRuntimeFreezeReason = null;
-
-/**
- * Contains a variant per dispatchable extrinsic that this pallet has.
- **/
-export type PalletBalancesCall =
-  /**
-   * Transfer some liquid free balance to another account.
-   *
-   * `transfer_allow_death` will set the `FreeBalance` of the sender and receiver.
-   * If the sender's account is below the existential deposit as a result
-   * of the transfer, the account will be reaped.
-   *
-   * The dispatch origin for this call must be `Signed` by the transactor.
-   **/
-  | {
-      name: 'TransferAllowDeath';
-      params: { dest: MultiAddress; value: bigint };
-    }
-  /**
-   * Exactly as `transfer_allow_death`, except the origin must be root and the source account
-   * may be specified.
-   **/
-  | {
-      name: 'ForceTransfer';
-      params: { source: MultiAddress; dest: MultiAddress; value: bigint };
-    }
-  /**
-   * Same as the [`transfer_allow_death`] call, but with a check that the transfer will not
-   * kill the origin account.
-   *
-   * 99% of the time you want [`transfer_allow_death`] instead.
-   *
-   * [`transfer_allow_death`]: struct.Pallet.html#method.transfer
-   **/
-  | { name: 'TransferKeepAlive'; params: { dest: MultiAddress; value: bigint } }
-  /**
-   * Transfer the entire transferable balance from the caller account.
-   *
-   * NOTE: This function only attempts to transfer _transferable_ balances. This means that
-   * any locked, reserved, or existential deposits (when `keep_alive` is `true`), will not be
-   * transferred by this function. To ensure that this function results in a killed account,
-   * you might need to prepare the account by removing any reference counters, storage
-   * deposits, etc...
-   *
-   * The dispatch origin of this call must be Signed.
-   *
-   * - `dest`: The recipient of the transfer.
-   * - `keep_alive`: A boolean to determine if the `transfer_all` operation should send all
-   * of the funds the account has, causing the sender account to be killed (false), or
-   * transfer everything except at least the existential deposit, which will guarantee to
-   * keep the sender account alive (true).
-   **/
-  | { name: 'TransferAll'; params: { dest: MultiAddress; keepAlive: boolean } }
-  /**
-   * Unreserve some balance from a user by force.
-   *
-   * Can only be called by ROOT.
-   **/
-  | { name: 'ForceUnreserve'; params: { who: MultiAddress; amount: bigint } }
-  /**
-   * Upgrade a specified account.
-   *
-   * - `origin`: Must be `Signed`.
-   * - `who`: The account to be upgraded.
-   *
-   * This will waive the transaction fee if at least all but 10% of the accounts needed to
-   * be upgraded. (We let some not have to be upgraded just in order to allow for the
-   * possibility of churn).
-   **/
-  | { name: 'UpgradeAccounts'; params: { who: Array<AccountId32> } }
-  /**
-   * Set the regular balance of a given account.
-   *
-   * The dispatch origin for this call is `root`.
-   **/
-  | { name: 'ForceSetBalance'; params: { who: MultiAddress; newFree: bigint } }
-  /**
-   * Adjust the total issuance in a saturating way.
-   *
-   * Can only be called by root and always needs a positive `delta`.
-   *
-   * # Example
-   **/
-  | {
-      name: 'ForceAdjustTotalIssuance';
-      params: { direction: PalletBalancesAdjustmentDirection; delta: bigint };
-    }
-  /**
-   * Burn the specified liquid free balance from the origin account.
-   *
-   * If the origin's account ends up below the existential deposit as a result
-   * of the burn and `keep_alive` is false, the account will be reaped.
-   *
-   * Unlike sending funds to a _burn_ address, which merely makes the funds inaccessible,
-   * this `burn` operation will reduce total issuance by the amount _burned_.
-   **/
-  | { name: 'Burn'; params: { value: bigint; keepAlive: boolean } };
-
-export type PalletBalancesCallLike =
-  /**
-   * Transfer some liquid free balance to another account.
-   *
-   * `transfer_allow_death` will set the `FreeBalance` of the sender and receiver.
-   * If the sender's account is below the existential deposit as a result
-   * of the transfer, the account will be reaped.
-   *
-   * The dispatch origin for this call must be `Signed` by the transactor.
-   **/
-  | {
-      name: 'TransferAllowDeath';
-      params: { dest: MultiAddressLike; value: bigint };
-    }
-  /**
-   * Exactly as `transfer_allow_death`, except the origin must be root and the source account
-   * may be specified.
-   **/
-  | {
-      name: 'ForceTransfer';
-      params: {
-        source: MultiAddressLike;
-        dest: MultiAddressLike;
-        value: bigint;
-      };
-    }
-  /**
-   * Same as the [`transfer_allow_death`] call, but with a check that the transfer will not
-   * kill the origin account.
-   *
-   * 99% of the time you want [`transfer_allow_death`] instead.
-   *
-   * [`transfer_allow_death`]: struct.Pallet.html#method.transfer
-   **/
-  | {
-      name: 'TransferKeepAlive';
-      params: { dest: MultiAddressLike; value: bigint };
-    }
-  /**
-   * Transfer the entire transferable balance from the caller account.
-   *
-   * NOTE: This function only attempts to transfer _transferable_ balances. This means that
-   * any locked, reserved, or existential deposits (when `keep_alive` is `true`), will not be
-   * transferred by this function. To ensure that this function results in a killed account,
-   * you might need to prepare the account by removing any reference counters, storage
-   * deposits, etc...
-   *
-   * The dispatch origin of this call must be Signed.
-   *
-   * - `dest`: The recipient of the transfer.
-   * - `keep_alive`: A boolean to determine if the `transfer_all` operation should send all
-   * of the funds the account has, causing the sender account to be killed (false), or
-   * transfer everything except at least the existential deposit, which will guarantee to
-   * keep the sender account alive (true).
-   **/
-  | {
-      name: 'TransferAll';
-      params: { dest: MultiAddressLike; keepAlive: boolean };
-    }
-  /**
-   * Unreserve some balance from a user by force.
-   *
-   * Can only be called by ROOT.
-   **/
-  | {
-      name: 'ForceUnreserve';
-      params: { who: MultiAddressLike; amount: bigint };
-    }
-  /**
-   * Upgrade a specified account.
-   *
-   * - `origin`: Must be `Signed`.
-   * - `who`: The account to be upgraded.
-   *
-   * This will waive the transaction fee if at least all but 10% of the accounts needed to
-   * be upgraded. (We let some not have to be upgraded just in order to allow for the
-   * possibility of churn).
-   **/
-  | { name: 'UpgradeAccounts'; params: { who: Array<AccountId32Like> } }
-  /**
-   * Set the regular balance of a given account.
-   *
-   * The dispatch origin for this call is `root`.
-   **/
-  | {
-      name: 'ForceSetBalance';
-      params: { who: MultiAddressLike; newFree: bigint };
-    }
-  /**
-   * Adjust the total issuance in a saturating way.
-   *
-   * Can only be called by root and always needs a positive `delta`.
-   *
-   * # Example
-   **/
-  | {
-      name: 'ForceAdjustTotalIssuance';
-      params: { direction: PalletBalancesAdjustmentDirection; delta: bigint };
-    }
-  /**
-   * Burn the specified liquid free balance from the origin account.
-   *
-   * If the origin's account ends up below the existential deposit as a result
-   * of the burn and `keep_alive` is false, the account will be reaped.
-   *
-   * Unlike sending funds to a _burn_ address, which merely makes the funds inaccessible,
-   * this `burn` operation will reduce total issuance by the amount _burned_.
-   **/
-  | { name: 'Burn'; params: { value: bigint; keepAlive: boolean } };
-
-export type PalletBalancesAdjustmentDirection = 'Increase' | 'Decrease';
-
-/**
- * The `Error` enum of this pallet.
- **/
-export type PalletBalancesError =
-  /**
-   * Vesting balance too high to send value.
-   **/
-  | 'VestingBalance'
-  /**
-   * Account liquidity restrictions prevent withdrawal.
-   **/
-  | 'LiquidityRestrictions'
-  /**
-   * Balance too low to send value.
-   **/
-  | 'InsufficientBalance'
-  /**
-   * Value too low to create account due to existential deposit.
-   **/
-  | 'ExistentialDeposit'
-  /**
-   * Transfer/payment would kill account.
-   **/
-  | 'Expendability'
-  /**
-   * A vesting schedule already exists for this account.
-   **/
-  | 'ExistingVestingSchedule'
-  /**
-   * Beneficiary account must pre-exist.
-   **/
-  | 'DeadAccount'
-  /**
-   * Number of named reserves exceed `MaxReserves`.
-   **/
-  | 'TooManyReserves'
-  /**
-   * Number of holds exceed `VariantCountOf<T::RuntimeHoldReason>`.
-   **/
-  | 'TooManyHolds'
-  /**
-   * Number of freezes exceed `MaxFreezes`.
-   **/
-  | 'TooManyFreezes'
-  /**
-   * The issuance cannot be modified since it is already deactivated.
-   **/
-  | 'IssuanceDeactivated'
-  /**
-   * The delta cannot be zero.
-   **/
-  | 'DeltaZero';
-
-export type SpConsensusBabeAppPublic = FixedBytes<32>;
-
-export type SpConsensusSlotsSlot = bigint;
-
-export type SpConsensusBabeDigestsNextConfigDescriptor = {
-  type: 'V1';
-  value: { c: [bigint, bigint]; allowedSlots: SpConsensusBabeAllowedSlots };
-};
-
-export type SpConsensusBabeAllowedSlots =
-  | 'PrimarySlots'
-  | 'PrimaryAndSecondaryPlainSlots'
-  | 'PrimaryAndSecondaryVRFSlots';
-
-export type SpConsensusBabeDigestsPreDigest =
-  | { type: 'Primary'; value: SpConsensusBabeDigestsPrimaryPreDigest }
-  | {
-      type: 'SecondaryPlain';
-      value: SpConsensusBabeDigestsSecondaryPlainPreDigest;
-    }
-  | {
-      type: 'SecondaryVRF';
-      value: SpConsensusBabeDigestsSecondaryVRFPreDigest;
-    };
-
-export type SpConsensusBabeDigestsPrimaryPreDigest = {
-  authorityIndex: number;
-  slot: SpConsensusSlotsSlot;
-  vrfSignature: SpCoreSr25519VrfVrfSignature;
-};
-
-export type SpCoreSr25519VrfVrfSignature = {
-  preOutput: FixedBytes<32>;
-  proof: FixedBytes<64>;
-};
-
-export type SpConsensusBabeDigestsSecondaryPlainPreDigest = {
-  authorityIndex: number;
-  slot: SpConsensusSlotsSlot;
-};
-
-export type SpConsensusBabeDigestsSecondaryVRFPreDigest = {
-  authorityIndex: number;
-  slot: SpConsensusSlotsSlot;
-  vrfSignature: SpCoreSr25519VrfVrfSignature;
-};
-
-export type SpConsensusBabeBabeEpochConfiguration = {
-  c: [bigint, bigint];
-  allowedSlots: SpConsensusBabeAllowedSlots;
-};
-
-/**
- * Contains a variant per dispatchable extrinsic that this pallet has.
- **/
-export type PalletBabeCall =
-  /**
-   * Report authority equivocation/misbehavior. This method will verify
-   * the equivocation proof and validate the given key ownership proof
-   * against the extracted offender. If both are valid, the offence will
-   * be reported.
-   **/
-  | {
-      name: 'ReportEquivocation';
-      params: {
-        equivocationProof: SpConsensusSlotsEquivocationProof;
-        keyOwnerProof: SpSessionMembershipProof;
-      };
-    }
-  /**
-   * Report authority equivocation/misbehavior. This method will verify
-   * the equivocation proof and validate the given key ownership proof
-   * against the extracted offender. If both are valid, the offence will
-   * be reported.
-   * This extrinsic must be called unsigned and it is expected that only
-   * block authors will call it (validated in `ValidateUnsigned`), as such
-   * if the block author is defined it will be defined as the equivocation
-   * reporter.
-   **/
-  | {
-      name: 'ReportEquivocationUnsigned';
-      params: {
-        equivocationProof: SpConsensusSlotsEquivocationProof;
-        keyOwnerProof: SpSessionMembershipProof;
-      };
-    }
-  /**
-   * Plan an epoch config change. The epoch config change is recorded and will be enacted on
-   * the next call to `enact_epoch_change`. The config will be activated one epoch after.
-   * Multiple calls to this method will replace any existing planned config change that had
-   * not been enacted yet.
-   **/
-  | {
-      name: 'PlanConfigChange';
-      params: { config: SpConsensusBabeDigestsNextConfigDescriptor };
-    };
-
-export type PalletBabeCallLike =
-  /**
-   * Report authority equivocation/misbehavior. This method will verify
-   * the equivocation proof and validate the given key ownership proof
-   * against the extracted offender. If both are valid, the offence will
-   * be reported.
-   **/
-  | {
-      name: 'ReportEquivocation';
-      params: {
-        equivocationProof: SpConsensusSlotsEquivocationProof;
-        keyOwnerProof: SpSessionMembershipProof;
-      };
-    }
-  /**
-   * Report authority equivocation/misbehavior. This method will verify
-   * the equivocation proof and validate the given key ownership proof
-   * against the extracted offender. If both are valid, the offence will
-   * be reported.
-   * This extrinsic must be called unsigned and it is expected that only
-   * block authors will call it (validated in `ValidateUnsigned`), as such
-   * if the block author is defined it will be defined as the equivocation
-   * reporter.
-   **/
-  | {
-      name: 'ReportEquivocationUnsigned';
-      params: {
-        equivocationProof: SpConsensusSlotsEquivocationProof;
-        keyOwnerProof: SpSessionMembershipProof;
-      };
-    }
-  /**
-   * Plan an epoch config change. The epoch config change is recorded and will be enacted on
-   * the next call to `enact_epoch_change`. The config will be activated one epoch after.
-   * Multiple calls to this method will replace any existing planned config change that had
-   * not been enacted yet.
-   **/
-  | {
-      name: 'PlanConfigChange';
-      params: { config: SpConsensusBabeDigestsNextConfigDescriptor };
-    };
-
-export type SpConsensusSlotsEquivocationProof = {
-  offender: SpConsensusBabeAppPublic;
-  slot: SpConsensusSlotsSlot;
-  firstHeader: Header;
-  secondHeader: Header;
-};
-
-export type SpSessionMembershipProof = {
-  session: number;
-  trieNodes: Array<Bytes>;
-  validatorCount: number;
-};
-
-/**
- * The `Error` enum of this pallet.
- **/
-export type PalletBabeError =
-  /**
-   * An equivocation proof provided as part of an equivocation report is invalid.
-   **/
-  | 'InvalidEquivocationProof'
-  /**
-   * A key ownership proof provided as part of an equivocation report is invalid.
-   **/
-  | 'InvalidKeyOwnershipProof'
-  /**
-   * A given equivocation report is valid but already previously reported.
-   **/
-  | 'DuplicateOffenceReport'
-  /**
-   * Submitted configuration is invalid.
-   **/
-  | 'InvalidConfiguration';
-
-/**
- * Contains a variant per dispatchable extrinsic that this pallet has.
- **/
-export type PalletTimestampCall =
-  /**
-   * Set the current time.
-   *
-   * This call should be invoked exactly once per block. It will panic at the finalization
-   * phase, if this call hasn't been invoked by that time.
-   *
-   * The timestamp should be greater than the previous one by the amount specified by
-   * [`Config::MinimumPeriod`].
-   *
-   * The dispatch origin for this call must be _None_.
-   *
-   * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
-   * that changing the complexity of this call could result exhausting the resources in a
-   * block to execute any other calls.
-   *
-   * ## Complexity
-   * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
-   * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
-   * `on_finalize`)
-   * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
-   **/
-  { name: 'Set'; params: { now: bigint } };
-
-export type PalletTimestampCallLike =
-  /**
-   * Set the current time.
-   *
-   * This call should be invoked exactly once per block. It will panic at the finalization
-   * phase, if this call hasn't been invoked by that time.
-   *
-   * The timestamp should be greater than the previous one by the amount specified by
-   * [`Config::MinimumPeriod`].
-   *
-   * The dispatch origin for this call must be _None_.
-   *
-   * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
-   * that changing the complexity of this call could result exhausting the resources in a
-   * block to execute any other calls.
-   *
-   * ## Complexity
-   * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
-   * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
-   * `on_finalize`)
-   * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
-   **/
-  { name: 'Set'; params: { now: bigint } };
-
-/**
- * Contains a variant per dispatchable extrinsic that this pallet has.
- **/
-export type PalletImOnlineCall =
-  /**
-   * ## Complexity:
-   * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
-   * - `O(K)`: decoding of length `K`
-   **/
-  {
-    name: 'Heartbeat';
-    params: {
-      heartbeat: PalletImOnlineHeartbeat;
-      signature: PalletImOnlineSr25519AppSr25519Signature;
-    };
-  };
-
-export type PalletImOnlineCallLike =
-  /**
-   * ## Complexity:
-   * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
-   * - `O(K)`: decoding of length `K`
-   **/
-  {
-    name: 'Heartbeat';
-    params: {
-      heartbeat: PalletImOnlineHeartbeat;
-      signature: PalletImOnlineSr25519AppSr25519Signature;
-    };
-  };
-
-export type PalletImOnlineHeartbeat = {
-  blockNumber: number;
-  sessionIndex: number;
-  authorityIndex: number;
-  validatorsLen: number;
-};
-
-export type PalletImOnlineSr25519AppSr25519Signature = FixedBytes<64>;
-
-/**
- * The `Error` enum of this pallet.
- **/
-export type PalletImOnlineError =
-  /**
-   * Non existent public key.
-   **/
-  | 'InvalidKey'
-  /**
-   * Duplicated heartbeat.
-   **/
-  | 'DuplicatedHeartbeat';
-
-/**
- * Contains a variant per dispatchable extrinsic that this pallet has.
- **/
-export type SubstrateValidatorSetCall =
-  /**
-   * Add a new validator.
-   *
-   * New validator's session keys should be set in Session pallet before
-   * calling this.
-   *
-   * The origin can be configured using the `AddRemoveOrigin` type in the
-   * host runtime. Can also be set to sudo/root.
-   **/
-  | { name: 'AddValidator'; params: { validatorId: AccountId32 } }
-  /**
-   * Remove a validator.
-   *
-   * The origin can be configured using the `AddRemoveOrigin` type in the
-   * host runtime. Can also be set to sudo/root.
-   **/
-  | { name: 'RemoveValidator'; params: { validatorId: AccountId32 } };
-
-export type SubstrateValidatorSetCallLike =
-  /**
-   * Add a new validator.
-   *
-   * New validator's session keys should be set in Session pallet before
-   * calling this.
-   *
-   * The origin can be configured using the `AddRemoveOrigin` type in the
-   * host runtime. Can also be set to sudo/root.
-   **/
-  | { name: 'AddValidator'; params: { validatorId: AccountId32Like } }
-  /**
-   * Remove a validator.
-   *
-   * The origin can be configured using the `AddRemoveOrigin` type in the
-   * host runtime. Can also be set to sudo/root.
-   **/
-  | { name: 'RemoveValidator'; params: { validatorId: AccountId32Like } };
-
-/**
- * The `Error` enum of this pallet.
- **/
-export type SubstrateValidatorSetError =
-  /**
-   * Target (post-removal) validator count is below the minimum.
-   **/
-  | 'TooLowValidatorCount'
-  /**
-   * Validator is already in the validator set.
-   **/
-  | 'Duplicate';
-
-export type MelodieRuntimePalletsSessionSessionKeys = {
-  grandpa: SpConsensusGrandpaAppPublic;
-  babe: SpConsensusBabeAppPublic;
-  imOnline: PalletImOnlineSr25519AppSr25519Public;
-  authorityDiscovery: SpAuthorityDiscoveryAppPublic;
-};
-
-export type SpAuthorityDiscoveryAppPublic = FixedBytes<32>;
-
-export type SpCoreCryptoKeyTypeId = FixedBytes<4>;
-
-/**
- * Contains a variant per dispatchable extrinsic that this pallet has.
- **/
-export type PalletSessionCall =
-  /**
-   * Sets the session key(s) of the function caller to `keys`.
-   * Allows an account to set its session key prior to becoming a validator.
-   * This doesn't take effect until the next session.
-   *
-   * The dispatch origin of this function must be signed.
-   *
-   * ## Complexity
-   * - `O(1)`. Actual cost depends on the number of length of `T::Keys::key_ids()` which is
-   * fixed.
-   **/
-  | {
-      name: 'SetKeys';
-      params: { keys: MelodieRuntimePalletsSessionSessionKeys; proof: Bytes };
-    }
-  /**
-   * Removes any session key(s) of the function caller.
-   *
-   * This doesn't take effect until the next session.
-   *
-   * The dispatch origin of this function must be Signed and the account must be either be
-   * convertible to a validator ID using the chain's typical addressing system (this usually
-   * means being a controller account) or directly convertible into a validator ID (which
-   * usually means being a stash account).
-   *
-   * ## Complexity
-   * - `O(1)` in number of key types. Actual cost depends on the number of length of
-   * `T::Keys::key_ids()` which is fixed.
-   **/
-  | { name: 'PurgeKeys' };
-
-export type PalletSessionCallLike =
-  /**
-   * Sets the session key(s) of the function caller to `keys`.
-   * Allows an account to set its session key prior to becoming a validator.
-   * This doesn't take effect until the next session.
-   *
-   * The dispatch origin of this function must be signed.
-   *
-   * ## Complexity
-   * - `O(1)`. Actual cost depends on the number of length of `T::Keys::key_ids()` which is
-   * fixed.
-   **/
-  | {
-      name: 'SetKeys';
-      params: {
-        keys: MelodieRuntimePalletsSessionSessionKeys;
-        proof: BytesLike;
-      };
-    }
-  /**
-   * Removes any session key(s) of the function caller.
-   *
-   * This doesn't take effect until the next session.
-   *
-   * The dispatch origin of this function must be Signed and the account must be either be
-   * convertible to a validator ID using the chain's typical addressing system (this usually
-   * means being a controller account) or directly convertible into a validator ID (which
-   * usually means being a stash account).
-   *
-   * ## Complexity
-   * - `O(1)` in number of key types. Actual cost depends on the number of length of
-   * `T::Keys::key_ids()` which is fixed.
-   **/
-  | { name: 'PurgeKeys' };
-
-/**
- * Error for the session pallet.
- **/
-export type PalletSessionError =
-  /**
-   * Invalid ownership proof.
-   **/
-  | 'InvalidProof'
-  /**
-   * No associated validator ID for account.
-   **/
-  | 'NoAssociatedValidatorId'
-  /**
-   * Registered duplicate key.
-   **/
-  | 'DuplicatedKey'
-  /**
-   * No keys are associated with this account.
-   **/
-  | 'NoKeys'
-  /**
-   * Key setting account is not live, so it's impossible to associate keys.
-   **/
-  | 'NoAccount';
-
-export type PalletGrandpaStoredState =
-  | { type: 'Live' }
-  | { type: 'PendingPause'; value: { scheduledAt: number; delay: number } }
-  | { type: 'Paused' }
-  | { type: 'PendingResume'; value: { scheduledAt: number; delay: number } };
-
-export type PalletGrandpaStoredPendingChange = {
-  scheduledAt: number;
-  delay: number;
-  nextAuthorities: Array<[SpConsensusGrandpaAppPublic, bigint]>;
-  forced?: number | undefined;
-};
-
-/**
- * Contains a variant per dispatchable extrinsic that this pallet has.
- **/
-export type PalletGrandpaCall =
-  /**
-   * Report voter equivocation/misbehavior. This method will verify the
-   * equivocation proof and validate the given key ownership proof
-   * against the extracted offender. If both are valid, the offence
-   * will be reported.
-   **/
-  | {
-      name: 'ReportEquivocation';
-      params: {
-        equivocationProof: SpConsensusGrandpaEquivocationProof;
-        keyOwnerProof: SpSessionMembershipProof;
-      };
-    }
-  /**
-   * Report voter equivocation/misbehavior. This method will verify the
-   * equivocation proof and validate the given key ownership proof
-   * against the extracted offender. If both are valid, the offence
-   * will be reported.
-   *
-   * This extrinsic must be called unsigned and it is expected that only
-   * block authors will call it (validated in `ValidateUnsigned`), as such
-   * if the block author is defined it will be defined as the equivocation
-   * reporter.
-   **/
-  | {
-      name: 'ReportEquivocationUnsigned';
-      params: {
-        equivocationProof: SpConsensusGrandpaEquivocationProof;
-        keyOwnerProof: SpSessionMembershipProof;
-      };
-    }
-  /**
-   * Note that the current authority set of the GRANDPA finality gadget has stalled.
-   *
-   * This will trigger a forced authority set change at the beginning of the next session, to
-   * be enacted `delay` blocks after that. The `delay` should be high enough to safely assume
-   * that the block signalling the forced change will not be re-orged e.g. 1000 blocks.
-   * The block production rate (which may be slowed down because of finality lagging) should
-   * be taken into account when choosing the `delay`. The GRANDPA voters based on the new
-   * authority will start voting on top of `best_finalized_block_number` for new finalized
-   * blocks. `best_finalized_block_number` should be the highest of the latest finalized
-   * block of all validators of the new authority set.
-   *
-   * Only callable by root.
-   **/
-  | {
-      name: 'NoteStalled';
-      params: { delay: number; bestFinalizedBlockNumber: number };
-    };
-
-export type PalletGrandpaCallLike =
-  /**
-   * Report voter equivocation/misbehavior. This method will verify the
-   * equivocation proof and validate the given key ownership proof
-   * against the extracted offender. If both are valid, the offence
-   * will be reported.
-   **/
-  | {
-      name: 'ReportEquivocation';
-      params: {
-        equivocationProof: SpConsensusGrandpaEquivocationProof;
-        keyOwnerProof: SpSessionMembershipProof;
-      };
-    }
-  /**
-   * Report voter equivocation/misbehavior. This method will verify the
-   * equivocation proof and validate the given key ownership proof
-   * against the extracted offender. If both are valid, the offence
-   * will be reported.
-   *
-   * This extrinsic must be called unsigned and it is expected that only
-   * block authors will call it (validated in `ValidateUnsigned`), as such
-   * if the block author is defined it will be defined as the equivocation
-   * reporter.
-   **/
-  | {
-      name: 'ReportEquivocationUnsigned';
-      params: {
-        equivocationProof: SpConsensusGrandpaEquivocationProof;
-        keyOwnerProof: SpSessionMembershipProof;
-      };
-    }
-  /**
-   * Note that the current authority set of the GRANDPA finality gadget has stalled.
-   *
-   * This will trigger a forced authority set change at the beginning of the next session, to
-   * be enacted `delay` blocks after that. The `delay` should be high enough to safely assume
-   * that the block signalling the forced change will not be re-orged e.g. 1000 blocks.
-   * The block production rate (which may be slowed down because of finality lagging) should
-   * be taken into account when choosing the `delay`. The GRANDPA voters based on the new
-   * authority will start voting on top of `best_finalized_block_number` for new finalized
-   * blocks. `best_finalized_block_number` should be the highest of the latest finalized
-   * block of all validators of the new authority set.
-   *
-   * Only callable by root.
-   **/
-  | {
-      name: 'NoteStalled';
-      params: { delay: number; bestFinalizedBlockNumber: number };
-    };
-
-export type SpConsensusGrandpaEquivocationProof = {
-  setId: bigint;
-  equivocation: SpConsensusGrandpaEquivocation;
-};
-
-export type SpConsensusGrandpaEquivocation =
-  | { type: 'Prevote'; value: FinalityGrandpaEquivocation }
-  | { type: 'Precommit'; value: FinalityGrandpaEquivocationPrecommit };
-
-export type FinalityGrandpaEquivocation = {
-  roundNumber: bigint;
-  identity: SpConsensusGrandpaAppPublic;
-  first: [FinalityGrandpaPrevote, SpConsensusGrandpaAppSignature];
-  second: [FinalityGrandpaPrevote, SpConsensusGrandpaAppSignature];
-};
-
-export type FinalityGrandpaPrevote = { targetHash: H256; targetNumber: number };
-
-export type SpConsensusGrandpaAppSignature = FixedBytes<64>;
-
-export type FinalityGrandpaEquivocationPrecommit = {
-  roundNumber: bigint;
-  identity: SpConsensusGrandpaAppPublic;
-  first: [FinalityGrandpaPrecommit, SpConsensusGrandpaAppSignature];
-  second: [FinalityGrandpaPrecommit, SpConsensusGrandpaAppSignature];
-};
-
-export type FinalityGrandpaPrecommit = {
-  targetHash: H256;
-  targetNumber: number;
-};
-
-/**
- * The `Error` enum of this pallet.
- **/
-export type PalletGrandpaError =
-  /**
-   * Attempt to signal GRANDPA pause when the authority set isn't live
-   * (either paused or already pending pause).
-   **/
-  | 'PauseFailed'
-  /**
-   * Attempt to signal GRANDPA resume when the authority set isn't paused
-   * (either live or already pending resume).
-   **/
-  | 'ResumeFailed'
-  /**
-   * Attempt to signal GRANDPA change with one already pending.
-   **/
-  | 'ChangePending'
-  /**
-   * Cannot signal forced change so soon after last.
-   **/
-  | 'TooSoon'
-  /**
-   * A key ownership proof provided as part of an equivocation report is invalid.
-   **/
-  | 'InvalidKeyOwnershipProof'
-  /**
-   * An equivocation proof provided as part of an equivocation report is invalid.
-   **/
-  | 'InvalidEquivocationProof'
-  /**
-   * A given equivocation report is valid but already previously reported.
-   **/
-  | 'DuplicateOffenceReport';
-
 /**
  * Contains a variant per dispatchable extrinsic that this pallet has.
  **/
@@ -2088,41 +1271,799 @@ export type PalletUtilityCallLike =
 
 export type MelodieRuntimeRuntimeCall =
   | { pallet: 'System'; palletCall: FrameSystemCall }
-  | { pallet: 'Balances'; palletCall: PalletBalancesCall }
+  | { pallet: 'Utility'; palletCall: PalletUtilityCall }
   | { pallet: 'Babe'; palletCall: PalletBabeCall }
   | { pallet: 'Timestamp'; palletCall: PalletTimestampCall }
-  | { pallet: 'ImOnline'; palletCall: PalletImOnlineCall }
+  | { pallet: 'Balances'; palletCall: PalletBalancesCall }
   | { pallet: 'ValidatorSet'; palletCall: SubstrateValidatorSetCall }
   | { pallet: 'Session'; palletCall: PalletSessionCall }
   | { pallet: 'Grandpa'; palletCall: PalletGrandpaCall }
-  | { pallet: 'Utility'; palletCall: PalletUtilityCall }
+  | { pallet: 'Sudo'; palletCall: PalletSudoCall }
+  | { pallet: 'ImOnline'; palletCall: PalletImOnlineCall }
   | { pallet: 'Identity'; palletCall: PalletIdentityCall }
   | { pallet: 'Scheduler'; palletCall: PalletSchedulerCall }
-  | { pallet: 'Sudo'; palletCall: PalletSudoCall }
+  | { pallet: 'Preimage'; palletCall: PalletPreimageCall }
   | { pallet: 'Proxy'; palletCall: PalletProxyCall }
   | { pallet: 'Multisig'; palletCall: PalletMultisigCall }
-  | { pallet: 'Preimage'; palletCall: PalletPreimageCall }
+  | { pallet: 'SafeMode'; palletCall: PalletSafeModeCall }
   | { pallet: 'Stakeholders'; palletCall: PalletMiddsCall }
   | { pallet: 'MusicalWorks'; palletCall: PalletMiddsCall002 };
 
 export type MelodieRuntimeRuntimeCallLike =
   | { pallet: 'System'; palletCall: FrameSystemCallLike }
-  | { pallet: 'Balances'; palletCall: PalletBalancesCallLike }
+  | { pallet: 'Utility'; palletCall: PalletUtilityCallLike }
   | { pallet: 'Babe'; palletCall: PalletBabeCallLike }
   | { pallet: 'Timestamp'; palletCall: PalletTimestampCallLike }
-  | { pallet: 'ImOnline'; palletCall: PalletImOnlineCallLike }
+  | { pallet: 'Balances'; palletCall: PalletBalancesCallLike }
   | { pallet: 'ValidatorSet'; palletCall: SubstrateValidatorSetCallLike }
   | { pallet: 'Session'; palletCall: PalletSessionCallLike }
   | { pallet: 'Grandpa'; palletCall: PalletGrandpaCallLike }
-  | { pallet: 'Utility'; palletCall: PalletUtilityCallLike }
+  | { pallet: 'Sudo'; palletCall: PalletSudoCallLike }
+  | { pallet: 'ImOnline'; palletCall: PalletImOnlineCallLike }
   | { pallet: 'Identity'; palletCall: PalletIdentityCallLike }
   | { pallet: 'Scheduler'; palletCall: PalletSchedulerCallLike }
-  | { pallet: 'Sudo'; palletCall: PalletSudoCallLike }
+  | { pallet: 'Preimage'; palletCall: PalletPreimageCallLike }
   | { pallet: 'Proxy'; palletCall: PalletProxyCallLike }
   | { pallet: 'Multisig'; palletCall: PalletMultisigCallLike }
-  | { pallet: 'Preimage'; palletCall: PalletPreimageCallLike }
+  | { pallet: 'SafeMode'; palletCall: PalletSafeModeCallLike }
   | { pallet: 'Stakeholders'; palletCall: PalletMiddsCallLike }
   | { pallet: 'MusicalWorks'; palletCall: PalletMiddsCallLike002 };
+
+/**
+ * Contains a variant per dispatchable extrinsic that this pallet has.
+ **/
+export type PalletBabeCall =
+  /**
+   * Report authority equivocation/misbehavior. This method will verify
+   * the equivocation proof and validate the given key ownership proof
+   * against the extracted offender. If both are valid, the offence will
+   * be reported.
+   **/
+  | {
+      name: 'ReportEquivocation';
+      params: {
+        equivocationProof: SpConsensusSlotsEquivocationProof;
+        keyOwnerProof: SpSessionMembershipProof;
+      };
+    }
+  /**
+   * Report authority equivocation/misbehavior. This method will verify
+   * the equivocation proof and validate the given key ownership proof
+   * against the extracted offender. If both are valid, the offence will
+   * be reported.
+   * This extrinsic must be called unsigned and it is expected that only
+   * block authors will call it (validated in `ValidateUnsigned`), as such
+   * if the block author is defined it will be defined as the equivocation
+   * reporter.
+   **/
+  | {
+      name: 'ReportEquivocationUnsigned';
+      params: {
+        equivocationProof: SpConsensusSlotsEquivocationProof;
+        keyOwnerProof: SpSessionMembershipProof;
+      };
+    }
+  /**
+   * Plan an epoch config change. The epoch config change is recorded and will be enacted on
+   * the next call to `enact_epoch_change`. The config will be activated one epoch after.
+   * Multiple calls to this method will replace any existing planned config change that had
+   * not been enacted yet.
+   **/
+  | {
+      name: 'PlanConfigChange';
+      params: { config: SpConsensusBabeDigestsNextConfigDescriptor };
+    };
+
+export type PalletBabeCallLike =
+  /**
+   * Report authority equivocation/misbehavior. This method will verify
+   * the equivocation proof and validate the given key ownership proof
+   * against the extracted offender. If both are valid, the offence will
+   * be reported.
+   **/
+  | {
+      name: 'ReportEquivocation';
+      params: {
+        equivocationProof: SpConsensusSlotsEquivocationProof;
+        keyOwnerProof: SpSessionMembershipProof;
+      };
+    }
+  /**
+   * Report authority equivocation/misbehavior. This method will verify
+   * the equivocation proof and validate the given key ownership proof
+   * against the extracted offender. If both are valid, the offence will
+   * be reported.
+   * This extrinsic must be called unsigned and it is expected that only
+   * block authors will call it (validated in `ValidateUnsigned`), as such
+   * if the block author is defined it will be defined as the equivocation
+   * reporter.
+   **/
+  | {
+      name: 'ReportEquivocationUnsigned';
+      params: {
+        equivocationProof: SpConsensusSlotsEquivocationProof;
+        keyOwnerProof: SpSessionMembershipProof;
+      };
+    }
+  /**
+   * Plan an epoch config change. The epoch config change is recorded and will be enacted on
+   * the next call to `enact_epoch_change`. The config will be activated one epoch after.
+   * Multiple calls to this method will replace any existing planned config change that had
+   * not been enacted yet.
+   **/
+  | {
+      name: 'PlanConfigChange';
+      params: { config: SpConsensusBabeDigestsNextConfigDescriptor };
+    };
+
+export type SpConsensusSlotsEquivocationProof = {
+  offender: SpConsensusBabeAppPublic;
+  slot: SpConsensusSlotsSlot;
+  firstHeader: Header;
+  secondHeader: Header;
+};
+
+export type SpConsensusBabeAppPublic = FixedBytes<32>;
+
+export type SpConsensusSlotsSlot = bigint;
+
+export type SpSessionMembershipProof = {
+  session: number;
+  trieNodes: Array<Bytes>;
+  validatorCount: number;
+};
+
+export type SpConsensusBabeDigestsNextConfigDescriptor = {
+  type: 'V1';
+  value: { c: [bigint, bigint]; allowedSlots: SpConsensusBabeAllowedSlots };
+};
+
+export type SpConsensusBabeAllowedSlots =
+  | 'PrimarySlots'
+  | 'PrimaryAndSecondaryPlainSlots'
+  | 'PrimaryAndSecondaryVRFSlots';
+
+/**
+ * Contains a variant per dispatchable extrinsic that this pallet has.
+ **/
+export type PalletTimestampCall =
+  /**
+   * Set the current time.
+   *
+   * This call should be invoked exactly once per block. It will panic at the finalization
+   * phase, if this call hasn't been invoked by that time.
+   *
+   * The timestamp should be greater than the previous one by the amount specified by
+   * [`Config::MinimumPeriod`].
+   *
+   * The dispatch origin for this call must be _None_.
+   *
+   * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
+   * that changing the complexity of this call could result exhausting the resources in a
+   * block to execute any other calls.
+   *
+   * ## Complexity
+   * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
+   * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
+   * `on_finalize`)
+   * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
+   **/
+  { name: 'Set'; params: { now: bigint } };
+
+export type PalletTimestampCallLike =
+  /**
+   * Set the current time.
+   *
+   * This call should be invoked exactly once per block. It will panic at the finalization
+   * phase, if this call hasn't been invoked by that time.
+   *
+   * The timestamp should be greater than the previous one by the amount specified by
+   * [`Config::MinimumPeriod`].
+   *
+   * The dispatch origin for this call must be _None_.
+   *
+   * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
+   * that changing the complexity of this call could result exhausting the resources in a
+   * block to execute any other calls.
+   *
+   * ## Complexity
+   * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
+   * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
+   * `on_finalize`)
+   * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
+   **/
+  { name: 'Set'; params: { now: bigint } };
+
+/**
+ * Contains a variant per dispatchable extrinsic that this pallet has.
+ **/
+export type PalletBalancesCall =
+  /**
+   * Transfer some liquid free balance to another account.
+   *
+   * `transfer_allow_death` will set the `FreeBalance` of the sender and receiver.
+   * If the sender's account is below the existential deposit as a result
+   * of the transfer, the account will be reaped.
+   *
+   * The dispatch origin for this call must be `Signed` by the transactor.
+   **/
+  | {
+      name: 'TransferAllowDeath';
+      params: { dest: MultiAddress; value: bigint };
+    }
+  /**
+   * Exactly as `transfer_allow_death`, except the origin must be root and the source account
+   * may be specified.
+   **/
+  | {
+      name: 'ForceTransfer';
+      params: { source: MultiAddress; dest: MultiAddress; value: bigint };
+    }
+  /**
+   * Same as the [`transfer_allow_death`] call, but with a check that the transfer will not
+   * kill the origin account.
+   *
+   * 99% of the time you want [`transfer_allow_death`] instead.
+   *
+   * [`transfer_allow_death`]: struct.Pallet.html#method.transfer
+   **/
+  | { name: 'TransferKeepAlive'; params: { dest: MultiAddress; value: bigint } }
+  /**
+   * Transfer the entire transferable balance from the caller account.
+   *
+   * NOTE: This function only attempts to transfer _transferable_ balances. This means that
+   * any locked, reserved, or existential deposits (when `keep_alive` is `true`), will not be
+   * transferred by this function. To ensure that this function results in a killed account,
+   * you might need to prepare the account by removing any reference counters, storage
+   * deposits, etc...
+   *
+   * The dispatch origin of this call must be Signed.
+   *
+   * - `dest`: The recipient of the transfer.
+   * - `keep_alive`: A boolean to determine if the `transfer_all` operation should send all
+   * of the funds the account has, causing the sender account to be killed (false), or
+   * transfer everything except at least the existential deposit, which will guarantee to
+   * keep the sender account alive (true).
+   **/
+  | { name: 'TransferAll'; params: { dest: MultiAddress; keepAlive: boolean } }
+  /**
+   * Unreserve some balance from a user by force.
+   *
+   * Can only be called by ROOT.
+   **/
+  | { name: 'ForceUnreserve'; params: { who: MultiAddress; amount: bigint } }
+  /**
+   * Upgrade a specified account.
+   *
+   * - `origin`: Must be `Signed`.
+   * - `who`: The account to be upgraded.
+   *
+   * This will waive the transaction fee if at least all but 10% of the accounts needed to
+   * be upgraded. (We let some not have to be upgraded just in order to allow for the
+   * possibility of churn).
+   **/
+  | { name: 'UpgradeAccounts'; params: { who: Array<AccountId32> } }
+  /**
+   * Set the regular balance of a given account.
+   *
+   * The dispatch origin for this call is `root`.
+   **/
+  | { name: 'ForceSetBalance'; params: { who: MultiAddress; newFree: bigint } }
+  /**
+   * Adjust the total issuance in a saturating way.
+   *
+   * Can only be called by root and always needs a positive `delta`.
+   *
+   * # Example
+   **/
+  | {
+      name: 'ForceAdjustTotalIssuance';
+      params: { direction: PalletBalancesAdjustmentDirection; delta: bigint };
+    }
+  /**
+   * Burn the specified liquid free balance from the origin account.
+   *
+   * If the origin's account ends up below the existential deposit as a result
+   * of the burn and `keep_alive` is false, the account will be reaped.
+   *
+   * Unlike sending funds to a _burn_ address, which merely makes the funds inaccessible,
+   * this `burn` operation will reduce total issuance by the amount _burned_.
+   **/
+  | { name: 'Burn'; params: { value: bigint; keepAlive: boolean } };
+
+export type PalletBalancesCallLike =
+  /**
+   * Transfer some liquid free balance to another account.
+   *
+   * `transfer_allow_death` will set the `FreeBalance` of the sender and receiver.
+   * If the sender's account is below the existential deposit as a result
+   * of the transfer, the account will be reaped.
+   *
+   * The dispatch origin for this call must be `Signed` by the transactor.
+   **/
+  | {
+      name: 'TransferAllowDeath';
+      params: { dest: MultiAddressLike; value: bigint };
+    }
+  /**
+   * Exactly as `transfer_allow_death`, except the origin must be root and the source account
+   * may be specified.
+   **/
+  | {
+      name: 'ForceTransfer';
+      params: {
+        source: MultiAddressLike;
+        dest: MultiAddressLike;
+        value: bigint;
+      };
+    }
+  /**
+   * Same as the [`transfer_allow_death`] call, but with a check that the transfer will not
+   * kill the origin account.
+   *
+   * 99% of the time you want [`transfer_allow_death`] instead.
+   *
+   * [`transfer_allow_death`]: struct.Pallet.html#method.transfer
+   **/
+  | {
+      name: 'TransferKeepAlive';
+      params: { dest: MultiAddressLike; value: bigint };
+    }
+  /**
+   * Transfer the entire transferable balance from the caller account.
+   *
+   * NOTE: This function only attempts to transfer _transferable_ balances. This means that
+   * any locked, reserved, or existential deposits (when `keep_alive` is `true`), will not be
+   * transferred by this function. To ensure that this function results in a killed account,
+   * you might need to prepare the account by removing any reference counters, storage
+   * deposits, etc...
+   *
+   * The dispatch origin of this call must be Signed.
+   *
+   * - `dest`: The recipient of the transfer.
+   * - `keep_alive`: A boolean to determine if the `transfer_all` operation should send all
+   * of the funds the account has, causing the sender account to be killed (false), or
+   * transfer everything except at least the existential deposit, which will guarantee to
+   * keep the sender account alive (true).
+   **/
+  | {
+      name: 'TransferAll';
+      params: { dest: MultiAddressLike; keepAlive: boolean };
+    }
+  /**
+   * Unreserve some balance from a user by force.
+   *
+   * Can only be called by ROOT.
+   **/
+  | {
+      name: 'ForceUnreserve';
+      params: { who: MultiAddressLike; amount: bigint };
+    }
+  /**
+   * Upgrade a specified account.
+   *
+   * - `origin`: Must be `Signed`.
+   * - `who`: The account to be upgraded.
+   *
+   * This will waive the transaction fee if at least all but 10% of the accounts needed to
+   * be upgraded. (We let some not have to be upgraded just in order to allow for the
+   * possibility of churn).
+   **/
+  | { name: 'UpgradeAccounts'; params: { who: Array<AccountId32Like> } }
+  /**
+   * Set the regular balance of a given account.
+   *
+   * The dispatch origin for this call is `root`.
+   **/
+  | {
+      name: 'ForceSetBalance';
+      params: { who: MultiAddressLike; newFree: bigint };
+    }
+  /**
+   * Adjust the total issuance in a saturating way.
+   *
+   * Can only be called by root and always needs a positive `delta`.
+   *
+   * # Example
+   **/
+  | {
+      name: 'ForceAdjustTotalIssuance';
+      params: { direction: PalletBalancesAdjustmentDirection; delta: bigint };
+    }
+  /**
+   * Burn the specified liquid free balance from the origin account.
+   *
+   * If the origin's account ends up below the existential deposit as a result
+   * of the burn and `keep_alive` is false, the account will be reaped.
+   *
+   * Unlike sending funds to a _burn_ address, which merely makes the funds inaccessible,
+   * this `burn` operation will reduce total issuance by the amount _burned_.
+   **/
+  | { name: 'Burn'; params: { value: bigint; keepAlive: boolean } };
+
+export type PalletBalancesAdjustmentDirection = 'Increase' | 'Decrease';
+
+/**
+ * Contains a variant per dispatchable extrinsic that this pallet has.
+ **/
+export type SubstrateValidatorSetCall =
+  /**
+   * Add a new validator.
+   *
+   * New validator's session keys should be set in Session pallet before
+   * calling this.
+   *
+   * The origin can be configured using the `AddRemoveOrigin` type in the
+   * host runtime. Can also be set to sudo/root.
+   **/
+  | { name: 'AddValidator'; params: { validatorId: AccountId32 } }
+  /**
+   * Remove a validator.
+   *
+   * The origin can be configured using the `AddRemoveOrigin` type in the
+   * host runtime. Can also be set to sudo/root.
+   **/
+  | { name: 'RemoveValidator'; params: { validatorId: AccountId32 } };
+
+export type SubstrateValidatorSetCallLike =
+  /**
+   * Add a new validator.
+   *
+   * New validator's session keys should be set in Session pallet before
+   * calling this.
+   *
+   * The origin can be configured using the `AddRemoveOrigin` type in the
+   * host runtime. Can also be set to sudo/root.
+   **/
+  | { name: 'AddValidator'; params: { validatorId: AccountId32Like } }
+  /**
+   * Remove a validator.
+   *
+   * The origin can be configured using the `AddRemoveOrigin` type in the
+   * host runtime. Can also be set to sudo/root.
+   **/
+  | { name: 'RemoveValidator'; params: { validatorId: AccountId32Like } };
+
+/**
+ * Contains a variant per dispatchable extrinsic that this pallet has.
+ **/
+export type PalletSessionCall =
+  /**
+   * Sets the session key(s) of the function caller to `keys`.
+   * Allows an account to set its session key prior to becoming a validator.
+   * This doesn't take effect until the next session.
+   *
+   * The dispatch origin of this function must be signed.
+   *
+   * ## Complexity
+   * - `O(1)`. Actual cost depends on the number of length of `T::Keys::key_ids()` which is
+   * fixed.
+   **/
+  | {
+      name: 'SetKeys';
+      params: { keys: MelodieRuntimePalletsSessionSessionKeys; proof: Bytes };
+    }
+  /**
+   * Removes any session key(s) of the function caller.
+   *
+   * This doesn't take effect until the next session.
+   *
+   * The dispatch origin of this function must be Signed and the account must be either be
+   * convertible to a validator ID using the chain's typical addressing system (this usually
+   * means being a controller account) or directly convertible into a validator ID (which
+   * usually means being a stash account).
+   *
+   * ## Complexity
+   * - `O(1)` in number of key types. Actual cost depends on the number of length of
+   * `T::Keys::key_ids()` which is fixed.
+   **/
+  | { name: 'PurgeKeys' };
+
+export type PalletSessionCallLike =
+  /**
+   * Sets the session key(s) of the function caller to `keys`.
+   * Allows an account to set its session key prior to becoming a validator.
+   * This doesn't take effect until the next session.
+   *
+   * The dispatch origin of this function must be signed.
+   *
+   * ## Complexity
+   * - `O(1)`. Actual cost depends on the number of length of `T::Keys::key_ids()` which is
+   * fixed.
+   **/
+  | {
+      name: 'SetKeys';
+      params: {
+        keys: MelodieRuntimePalletsSessionSessionKeys;
+        proof: BytesLike;
+      };
+    }
+  /**
+   * Removes any session key(s) of the function caller.
+   *
+   * This doesn't take effect until the next session.
+   *
+   * The dispatch origin of this function must be Signed and the account must be either be
+   * convertible to a validator ID using the chain's typical addressing system (this usually
+   * means being a controller account) or directly convertible into a validator ID (which
+   * usually means being a stash account).
+   *
+   * ## Complexity
+   * - `O(1)` in number of key types. Actual cost depends on the number of length of
+   * `T::Keys::key_ids()` which is fixed.
+   **/
+  | { name: 'PurgeKeys' };
+
+export type MelodieRuntimePalletsSessionSessionKeys = {
+  grandpa: SpConsensusGrandpaAppPublic;
+  babe: SpConsensusBabeAppPublic;
+  imOnline: PalletImOnlineSr25519AppSr25519Public;
+  authorityDiscovery: SpAuthorityDiscoveryAppPublic;
+};
+
+export type SpAuthorityDiscoveryAppPublic = FixedBytes<32>;
+
+/**
+ * Contains a variant per dispatchable extrinsic that this pallet has.
+ **/
+export type PalletGrandpaCall =
+  /**
+   * Report voter equivocation/misbehavior. This method will verify the
+   * equivocation proof and validate the given key ownership proof
+   * against the extracted offender. If both are valid, the offence
+   * will be reported.
+   **/
+  | {
+      name: 'ReportEquivocation';
+      params: {
+        equivocationProof: SpConsensusGrandpaEquivocationProof;
+        keyOwnerProof: SpSessionMembershipProof;
+      };
+    }
+  /**
+   * Report voter equivocation/misbehavior. This method will verify the
+   * equivocation proof and validate the given key ownership proof
+   * against the extracted offender. If both are valid, the offence
+   * will be reported.
+   *
+   * This extrinsic must be called unsigned and it is expected that only
+   * block authors will call it (validated in `ValidateUnsigned`), as such
+   * if the block author is defined it will be defined as the equivocation
+   * reporter.
+   **/
+  | {
+      name: 'ReportEquivocationUnsigned';
+      params: {
+        equivocationProof: SpConsensusGrandpaEquivocationProof;
+        keyOwnerProof: SpSessionMembershipProof;
+      };
+    }
+  /**
+   * Note that the current authority set of the GRANDPA finality gadget has stalled.
+   *
+   * This will trigger a forced authority set change at the beginning of the next session, to
+   * be enacted `delay` blocks after that. The `delay` should be high enough to safely assume
+   * that the block signalling the forced change will not be re-orged e.g. 1000 blocks.
+   * The block production rate (which may be slowed down because of finality lagging) should
+   * be taken into account when choosing the `delay`. The GRANDPA voters based on the new
+   * authority will start voting on top of `best_finalized_block_number` for new finalized
+   * blocks. `best_finalized_block_number` should be the highest of the latest finalized
+   * block of all validators of the new authority set.
+   *
+   * Only callable by root.
+   **/
+  | {
+      name: 'NoteStalled';
+      params: { delay: number; bestFinalizedBlockNumber: number };
+    };
+
+export type PalletGrandpaCallLike =
+  /**
+   * Report voter equivocation/misbehavior. This method will verify the
+   * equivocation proof and validate the given key ownership proof
+   * against the extracted offender. If both are valid, the offence
+   * will be reported.
+   **/
+  | {
+      name: 'ReportEquivocation';
+      params: {
+        equivocationProof: SpConsensusGrandpaEquivocationProof;
+        keyOwnerProof: SpSessionMembershipProof;
+      };
+    }
+  /**
+   * Report voter equivocation/misbehavior. This method will verify the
+   * equivocation proof and validate the given key ownership proof
+   * against the extracted offender. If both are valid, the offence
+   * will be reported.
+   *
+   * This extrinsic must be called unsigned and it is expected that only
+   * block authors will call it (validated in `ValidateUnsigned`), as such
+   * if the block author is defined it will be defined as the equivocation
+   * reporter.
+   **/
+  | {
+      name: 'ReportEquivocationUnsigned';
+      params: {
+        equivocationProof: SpConsensusGrandpaEquivocationProof;
+        keyOwnerProof: SpSessionMembershipProof;
+      };
+    }
+  /**
+   * Note that the current authority set of the GRANDPA finality gadget has stalled.
+   *
+   * This will trigger a forced authority set change at the beginning of the next session, to
+   * be enacted `delay` blocks after that. The `delay` should be high enough to safely assume
+   * that the block signalling the forced change will not be re-orged e.g. 1000 blocks.
+   * The block production rate (which may be slowed down because of finality lagging) should
+   * be taken into account when choosing the `delay`. The GRANDPA voters based on the new
+   * authority will start voting on top of `best_finalized_block_number` for new finalized
+   * blocks. `best_finalized_block_number` should be the highest of the latest finalized
+   * block of all validators of the new authority set.
+   *
+   * Only callable by root.
+   **/
+  | {
+      name: 'NoteStalled';
+      params: { delay: number; bestFinalizedBlockNumber: number };
+    };
+
+export type SpConsensusGrandpaEquivocationProof = {
+  setId: bigint;
+  equivocation: SpConsensusGrandpaEquivocation;
+};
+
+export type SpConsensusGrandpaEquivocation =
+  | { type: 'Prevote'; value: FinalityGrandpaEquivocation }
+  | { type: 'Precommit'; value: FinalityGrandpaEquivocationPrecommit };
+
+export type FinalityGrandpaEquivocation = {
+  roundNumber: bigint;
+  identity: SpConsensusGrandpaAppPublic;
+  first: [FinalityGrandpaPrevote, SpConsensusGrandpaAppSignature];
+  second: [FinalityGrandpaPrevote, SpConsensusGrandpaAppSignature];
+};
+
+export type FinalityGrandpaPrevote = { targetHash: H256; targetNumber: number };
+
+export type SpConsensusGrandpaAppSignature = FixedBytes<64>;
+
+export type FinalityGrandpaEquivocationPrecommit = {
+  roundNumber: bigint;
+  identity: SpConsensusGrandpaAppPublic;
+  first: [FinalityGrandpaPrecommit, SpConsensusGrandpaAppSignature];
+  second: [FinalityGrandpaPrecommit, SpConsensusGrandpaAppSignature];
+};
+
+export type FinalityGrandpaPrecommit = {
+  targetHash: H256;
+  targetNumber: number;
+};
+
+/**
+ * Contains a variant per dispatchable extrinsic that this pallet has.
+ **/
+export type PalletSudoCall =
+  /**
+   * Authenticates the sudo key and dispatches a function call with `Root` origin.
+   **/
+  | { name: 'Sudo'; params: { call: MelodieRuntimeRuntimeCall } }
+  /**
+   * Authenticates the sudo key and dispatches a function call with `Root` origin.
+   * This function does not check the weight of the call, and instead allows the
+   * Sudo user to specify the weight of the call.
+   *
+   * The dispatch origin for this call must be _Signed_.
+   **/
+  | {
+      name: 'SudoUncheckedWeight';
+      params: {
+        call: MelodieRuntimeRuntimeCall;
+        weight: SpWeightsWeightV2Weight;
+      };
+    }
+  /**
+   * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
+   * key.
+   **/
+  | { name: 'SetKey'; params: { new: MultiAddress } }
+  /**
+   * Authenticates the sudo key and dispatches a function call with `Signed` origin from
+   * a given account.
+   *
+   * The dispatch origin for this call must be _Signed_.
+   **/
+  | {
+      name: 'SudoAs';
+      params: { who: MultiAddress; call: MelodieRuntimeRuntimeCall };
+    }
+  /**
+   * Permanently removes the sudo key.
+   *
+   * **This cannot be un-done.**
+   **/
+  | { name: 'RemoveKey' };
+
+export type PalletSudoCallLike =
+  /**
+   * Authenticates the sudo key and dispatches a function call with `Root` origin.
+   **/
+  | { name: 'Sudo'; params: { call: MelodieRuntimeRuntimeCallLike } }
+  /**
+   * Authenticates the sudo key and dispatches a function call with `Root` origin.
+   * This function does not check the weight of the call, and instead allows the
+   * Sudo user to specify the weight of the call.
+   *
+   * The dispatch origin for this call must be _Signed_.
+   **/
+  | {
+      name: 'SudoUncheckedWeight';
+      params: {
+        call: MelodieRuntimeRuntimeCallLike;
+        weight: SpWeightsWeightV2Weight;
+      };
+    }
+  /**
+   * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
+   * key.
+   **/
+  | { name: 'SetKey'; params: { new: MultiAddressLike } }
+  /**
+   * Authenticates the sudo key and dispatches a function call with `Signed` origin from
+   * a given account.
+   *
+   * The dispatch origin for this call must be _Signed_.
+   **/
+  | {
+      name: 'SudoAs';
+      params: { who: MultiAddressLike; call: MelodieRuntimeRuntimeCallLike };
+    }
+  /**
+   * Permanently removes the sudo key.
+   *
+   * **This cannot be un-done.**
+   **/
+  | { name: 'RemoveKey' };
+
+/**
+ * Contains a variant per dispatchable extrinsic that this pallet has.
+ **/
+export type PalletImOnlineCall =
+  /**
+   * ## Complexity:
+   * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
+   * - `O(K)`: decoding of length `K`
+   **/
+  {
+    name: 'Heartbeat';
+    params: {
+      heartbeat: PalletImOnlineHeartbeat;
+      signature: PalletImOnlineSr25519AppSr25519Signature;
+    };
+  };
+
+export type PalletImOnlineCallLike =
+  /**
+   * ## Complexity:
+   * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
+   * - `O(K)`: decoding of length `K`
+   **/
+  {
+    name: 'Heartbeat';
+    params: {
+      heartbeat: PalletImOnlineHeartbeat;
+      signature: PalletImOnlineSr25519AppSr25519Signature;
+    };
+  };
+
+export type PalletImOnlineHeartbeat = {
+  blockNumber: number;
+  sessionIndex: number;
+  authorityIndex: number;
+  validatorsLen: number;
+};
+
+export type PalletImOnlineSr25519AppSr25519Signature = FixedBytes<64>;
 
 /**
  * Identity pallet declaration.
@@ -2150,7 +2091,7 @@ export type PalletIdentityCall =
    *
    * Emits `IdentitySet` if successful.
    **/
-  | { name: 'SetIdentity'; params: { info: SharedRuntimeIdentityIdentityInfo } }
+  | { name: 'SetIdentity'; params: { info: PalletIdentityLegacyIdentityInfo } }
   /**
    * Set the sub-accounts of the sender.
    *
@@ -2320,8 +2261,9 @@ export type PalletIdentityCall =
   /**
    * Add an `AccountId` with permission to grant usernames with a given `suffix` appended.
    *
-   * The authority can grant up to `allocation` usernames. To top up their allocation, they
-   * should just issue (or request via governance) a new `add_username_authority` call.
+   * The authority can grant up to `allocation` usernames. To top up the allocation or
+   * change the account used to grant usernames, this call can be used with the updated
+   * parameters to overwrite the existing configuration.
    **/
   | {
       name: 'AddUsernameAuthority';
@@ -2330,11 +2272,18 @@ export type PalletIdentityCall =
   /**
    * Remove `authority` from the username authorities.
    **/
-  | { name: 'RemoveUsernameAuthority'; params: { authority: MultiAddress } }
+  | {
+      name: 'RemoveUsernameAuthority';
+      params: { suffix: Bytes; authority: MultiAddress };
+    }
   /**
    * Set the username for `who`. Must be called by a username authority.
    *
-   * The authority must have an `allocation`. Users can either pre-sign their usernames or
+   * If `use_allocation` is set, the authority must have a username allocation available to
+   * spend. Otherwise, the authority will need to put up a deposit for registering the
+   * username.
+   *
+   * Users can either pre-sign their usernames or
    * accept them later.
    *
    * Usernames must:
@@ -2348,6 +2297,7 @@ export type PalletIdentityCall =
         who: MultiAddress;
         username: Bytes;
         signature?: SpRuntimeMultiSignature | undefined;
+        useAllocation: boolean;
       };
     }
   /**
@@ -2366,10 +2316,21 @@ export type PalletIdentityCall =
    **/
   | { name: 'SetPrimaryUsername'; params: { username: Bytes } }
   /**
-   * Remove a username that corresponds to an account with no identity. Exists when a user
-   * gets a username but then calls `clear_identity`.
+   * Start the process of removing a username by placing it in the unbinding usernames map.
+   * Once the grace period has passed, the username can be deleted by calling
+   * [remove_username](crate::Call::remove_username).
    **/
-  | { name: 'RemoveDanglingUsername'; params: { username: Bytes } };
+  | { name: 'UnbindUsername'; params: { username: Bytes } }
+  /**
+   * Permanently delete a username which has been unbinding for longer than the grace period.
+   * Caller is refunded the fee if the username expired and the removal was successful.
+   **/
+  | { name: 'RemoveUsername'; params: { username: Bytes } }
+  /**
+   * Call with [ForceOrigin](crate::Config::ForceOrigin) privileges which deletes a username
+   * and slashes any deposit associated with it.
+   **/
+  | { name: 'KillUsername'; params: { username: Bytes } };
 
 export type PalletIdentityCallLike =
   /**
@@ -2394,7 +2355,7 @@ export type PalletIdentityCallLike =
    *
    * Emits `IdentitySet` if successful.
    **/
-  | { name: 'SetIdentity'; params: { info: SharedRuntimeIdentityIdentityInfo } }
+  | { name: 'SetIdentity'; params: { info: PalletIdentityLegacyIdentityInfo } }
   /**
    * Set the sub-accounts of the sender.
    *
@@ -2564,8 +2525,9 @@ export type PalletIdentityCallLike =
   /**
    * Add an `AccountId` with permission to grant usernames with a given `suffix` appended.
    *
-   * The authority can grant up to `allocation` usernames. To top up their allocation, they
-   * should just issue (or request via governance) a new `add_username_authority` call.
+   * The authority can grant up to `allocation` usernames. To top up the allocation or
+   * change the account used to grant usernames, this call can be used with the updated
+   * parameters to overwrite the existing configuration.
    **/
   | {
       name: 'AddUsernameAuthority';
@@ -2578,11 +2540,18 @@ export type PalletIdentityCallLike =
   /**
    * Remove `authority` from the username authorities.
    **/
-  | { name: 'RemoveUsernameAuthority'; params: { authority: MultiAddressLike } }
+  | {
+      name: 'RemoveUsernameAuthority';
+      params: { suffix: BytesLike; authority: MultiAddressLike };
+    }
   /**
    * Set the username for `who`. Must be called by a username authority.
    *
-   * The authority must have an `allocation`. Users can either pre-sign their usernames or
+   * If `use_allocation` is set, the authority must have a username allocation available to
+   * spend. Otherwise, the authority will need to put up a deposit for registering the
+   * username.
+   *
+   * Users can either pre-sign their usernames or
    * accept them later.
    *
    * Usernames must:
@@ -2596,6 +2565,7 @@ export type PalletIdentityCallLike =
         who: MultiAddressLike;
         username: BytesLike;
         signature?: SpRuntimeMultiSignature | undefined;
+        useAllocation: boolean;
       };
     }
   /**
@@ -2614,24 +2584,32 @@ export type PalletIdentityCallLike =
    **/
   | { name: 'SetPrimaryUsername'; params: { username: BytesLike } }
   /**
-   * Remove a username that corresponds to an account with no identity. Exists when a user
-   * gets a username but then calls `clear_identity`.
+   * Start the process of removing a username by placing it in the unbinding usernames map.
+   * Once the grace period has passed, the username can be deleted by calling
+   * [remove_username](crate::Call::remove_username).
    **/
-  | { name: 'RemoveDanglingUsername'; params: { username: BytesLike } };
+  | { name: 'UnbindUsername'; params: { username: BytesLike } }
+  /**
+   * Permanently delete a username which has been unbinding for longer than the grace period.
+   * Caller is refunded the fee if the username expired and the removal was successful.
+   **/
+  | { name: 'RemoveUsername'; params: { username: BytesLike } }
+  /**
+   * Call with [ForceOrigin](crate::Config::ForceOrigin) privileges which deletes a username
+   * and slashes any deposit associated with it.
+   **/
+  | { name: 'KillUsername'; params: { username: BytesLike } };
 
-export type SharedRuntimeIdentityIdentityInfo = {
+export type PalletIdentityLegacyIdentityInfo = {
   additional: Array<[Data, Data]>;
   display: Data;
   legal: Data;
   web: Data;
-  matrix: Data;
+  riot: Data;
   email: Data;
+  pgpFingerprint?: FixedBytes<20> | undefined;
+  image: Data;
   twitter: Data;
-  instagram: Data;
-  youtube: Data;
-  tiktok: Data;
-  discord: Data;
-  telegram: Data;
 };
 
 export type PalletIdentityJudgement =
@@ -2862,87 +2840,79 @@ export type PalletSchedulerCallLike =
 /**
  * Contains a variant per dispatchable extrinsic that this pallet has.
  **/
-export type PalletSudoCall =
+export type PalletPreimageCall =
   /**
-   * Authenticates the sudo key and dispatches a function call with `Root` origin.
-   **/
-  | { name: 'Sudo'; params: { call: MelodieRuntimeRuntimeCall } }
-  /**
-   * Authenticates the sudo key and dispatches a function call with `Root` origin.
-   * This function does not check the weight of the call, and instead allows the
-   * Sudo user to specify the weight of the call.
+   * Register a preimage on-chain.
    *
-   * The dispatch origin for this call must be _Signed_.
+   * If the preimage was previously requested, no fees or deposits are taken for providing
+   * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
    **/
-  | {
-      name: 'SudoUncheckedWeight';
-      params: {
-        call: MelodieRuntimeRuntimeCall;
-        weight: SpWeightsWeightV2Weight;
-      };
-    }
+  | { name: 'NotePreimage'; params: { bytes: Bytes } }
   /**
-   * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
-   * key.
-   **/
-  | { name: 'SetKey'; params: { new: MultiAddress } }
-  /**
-   * Authenticates the sudo key and dispatches a function call with `Signed` origin from
-   * a given account.
+   * Clear an unrequested preimage from the runtime storage.
    *
-   * The dispatch origin for this call must be _Signed_.
-   **/
-  | {
-      name: 'SudoAs';
-      params: { who: MultiAddress; call: MelodieRuntimeRuntimeCall };
-    }
-  /**
-   * Permanently removes the sudo key.
+   * If `len` is provided, then it will be a much cheaper operation.
    *
-   * **This cannot be un-done.**
+   * - `hash`: The hash of the preimage to be removed from the store.
+   * - `len`: The length of the preimage of `hash`.
    **/
-  | { name: 'RemoveKey' };
+  | { name: 'UnnotePreimage'; params: { hash: H256 } }
+  /**
+   * Request a preimage be uploaded to the chain without paying any fees or deposits.
+   *
+   * If the preimage requests has already been provided on-chain, we unreserve any deposit
+   * a user may have paid, and take the control of the preimage out of their hands.
+   **/
+  | { name: 'RequestPreimage'; params: { hash: H256 } }
+  /**
+   * Clear a previously made request for a preimage.
+   *
+   * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
+   **/
+  | { name: 'UnrequestPreimage'; params: { hash: H256 } }
+  /**
+   * Ensure that the a bulk of pre-images is upgraded.
+   *
+   * The caller pays no fee if at least 90% of pre-images were successfully updated.
+   **/
+  | { name: 'EnsureUpdated'; params: { hashes: Array<H256> } };
 
-export type PalletSudoCallLike =
+export type PalletPreimageCallLike =
   /**
-   * Authenticates the sudo key and dispatches a function call with `Root` origin.
-   **/
-  | { name: 'Sudo'; params: { call: MelodieRuntimeRuntimeCallLike } }
-  /**
-   * Authenticates the sudo key and dispatches a function call with `Root` origin.
-   * This function does not check the weight of the call, and instead allows the
-   * Sudo user to specify the weight of the call.
+   * Register a preimage on-chain.
    *
-   * The dispatch origin for this call must be _Signed_.
+   * If the preimage was previously requested, no fees or deposits are taken for providing
+   * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
    **/
-  | {
-      name: 'SudoUncheckedWeight';
-      params: {
-        call: MelodieRuntimeRuntimeCallLike;
-        weight: SpWeightsWeightV2Weight;
-      };
-    }
+  | { name: 'NotePreimage'; params: { bytes: BytesLike } }
   /**
-   * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
-   * key.
-   **/
-  | { name: 'SetKey'; params: { new: MultiAddressLike } }
-  /**
-   * Authenticates the sudo key and dispatches a function call with `Signed` origin from
-   * a given account.
+   * Clear an unrequested preimage from the runtime storage.
    *
-   * The dispatch origin for this call must be _Signed_.
-   **/
-  | {
-      name: 'SudoAs';
-      params: { who: MultiAddressLike; call: MelodieRuntimeRuntimeCallLike };
-    }
-  /**
-   * Permanently removes the sudo key.
+   * If `len` is provided, then it will be a much cheaper operation.
    *
-   * **This cannot be un-done.**
+   * - `hash`: The hash of the preimage to be removed from the store.
+   * - `len`: The length of the preimage of `hash`.
    **/
-  | { name: 'RemoveKey' };
+  | { name: 'UnnotePreimage'; params: { hash: H256 } }
+  /**
+   * Request a preimage be uploaded to the chain without paying any fees or deposits.
+   *
+   * If the preimage requests has already been provided on-chain, we unreserve any deposit
+   * a user may have paid, and take the control of the preimage out of their hands.
+   **/
+  | { name: 'RequestPreimage'; params: { hash: H256 } }
+  /**
+   * Clear a previously made request for a preimage.
+   *
+   * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
+   **/
+  | { name: 'UnrequestPreimage'; params: { hash: H256 } }
+  /**
+   * Ensure that the a bulk of pre-images is upgraded.
+   *
+   * The caller pays no fee if at least 90% of pre-images were successfully updated.
+   **/
+  | { name: 'EnsureUpdated'; params: { hashes: Array<H256> } };
 
 /**
  * Contains a variant per dispatchable extrinsic that this pallet has.
@@ -3637,79 +3607,212 @@ export type PalletMultisigCallLike =
 /**
  * Contains a variant per dispatchable extrinsic that this pallet has.
  **/
-export type PalletPreimageCall =
+export type PalletSafeModeCall =
   /**
-   * Register a preimage on-chain.
+   * Enter safe-mode permissionlessly for [`Config::EnterDuration`] blocks.
    *
-   * If the preimage was previously requested, no fees or deposits are taken for providing
-   * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
+   * Reserves [`Config::EnterDepositAmount`] from the caller's account.
+   * Emits an [`Event::Entered`] event on success.
+   * Errors with [`Error::Entered`] if the safe-mode is already entered.
+   * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
    **/
-  | { name: 'NotePreimage'; params: { bytes: Bytes } }
+  | { name: 'Enter' }
   /**
-   * Clear an unrequested preimage from the runtime storage.
+   * Enter safe-mode by force for a per-origin configured number of blocks.
    *
-   * If `len` is provided, then it will be a much cheaper operation.
+   * Emits an [`Event::Entered`] event on success.
+   * Errors with [`Error::Entered`] if the safe-mode is already entered.
    *
-   * - `hash`: The hash of the preimage to be removed from the store.
-   * - `len`: The length of the preimage of `hash`.
+   * Can only be called by the [`Config::ForceEnterOrigin`] origin.
    **/
-  | { name: 'UnnotePreimage'; params: { hash: H256 } }
+  | { name: 'ForceEnter' }
   /**
-   * Request a preimage be uploaded to the chain without paying any fees or deposits.
+   * Extend the safe-mode permissionlessly for [`Config::ExtendDuration`] blocks.
    *
-   * If the preimage requests has already been provided on-chain, we unreserve any deposit
-   * a user may have paid, and take the control of the preimage out of their hands.
+   * This accumulates on top of the current remaining duration.
+   * Reserves [`Config::ExtendDepositAmount`] from the caller's account.
+   * Emits an [`Event::Extended`] event on success.
+   * Errors with [`Error::Exited`] if the safe-mode is entered.
+   * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
+   *
+   * This may be called by any signed origin with [`Config::ExtendDepositAmount`] free
+   * currency to reserve. This call can be disabled for all origins by configuring
+   * [`Config::ExtendDepositAmount`] to `None`.
    **/
-  | { name: 'RequestPreimage'; params: { hash: H256 } }
+  | { name: 'Extend' }
   /**
-   * Clear a previously made request for a preimage.
+   * Extend the safe-mode by force for a per-origin configured number of blocks.
    *
-   * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
+   * Emits an [`Event::Extended`] event on success.
+   * Errors with [`Error::Exited`] if the safe-mode is inactive.
+   *
+   * Can only be called by the [`Config::ForceExtendOrigin`] origin.
    **/
-  | { name: 'UnrequestPreimage'; params: { hash: H256 } }
+  | { name: 'ForceExtend' }
   /**
-   * Ensure that the a bulk of pre-images is upgraded.
+   * Exit safe-mode by force.
    *
-   * The caller pays no fee if at least 90% of pre-images were successfully updated.
+   * Emits an [`Event::Exited`] with [`ExitReason::Force`] event on success.
+   * Errors with [`Error::Exited`] if the safe-mode is inactive.
+   *
+   * Note: `safe-mode` will be automatically deactivated by [`Pallet::on_initialize`] hook
+   * after the block height is greater than the [`EnteredUntil`] storage item.
+   * Emits an [`Event::Exited`] with [`ExitReason::Timeout`] event when deactivated in the
+   * hook.
    **/
-  | { name: 'EnsureUpdated'; params: { hashes: Array<H256> } };
+  | { name: 'ForceExit' }
+  /**
+   * Slash a deposit for an account that entered or extended safe-mode at a given
+   * historical block.
+   *
+   * This can only be called while safe-mode is entered.
+   *
+   * Emits a [`Event::DepositSlashed`] event on success.
+   * Errors with [`Error::Entered`] if safe-mode is entered.
+   *
+   * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+   **/
+  | {
+      name: 'ForceSlashDeposit';
+      params: { account: AccountId32; block: number };
+    }
+  /**
+   * Permissionlessly release a deposit for an account that entered safe-mode at a
+   * given historical block.
+   *
+   * The call can be completely disabled by setting [`Config::ReleaseDelay`] to `None`.
+   * This cannot be called while safe-mode is entered and not until
+   * [`Config::ReleaseDelay`] blocks have passed since safe-mode was entered.
+   *
+   * Emits a [`Event::DepositReleased`] event on success.
+   * Errors with [`Error::Entered`] if the safe-mode is entered.
+   * Errors with [`Error::CannotReleaseYet`] if [`Config::ReleaseDelay`] block have not
+   * passed since safe-mode was entered. Errors with [`Error::NoDeposit`] if the payee has no
+   * reserved currency at the block specified.
+   **/
+  | { name: 'ReleaseDeposit'; params: { account: AccountId32; block: number } }
+  /**
+   * Force to release a deposit for an account that entered safe-mode at a given
+   * historical block.
+   *
+   * This can be called while safe-mode is still entered.
+   *
+   * Emits a [`Event::DepositReleased`] event on success.
+   * Errors with [`Error::Entered`] if safe-mode is entered.
+   * Errors with [`Error::NoDeposit`] if the payee has no reserved currency at the
+   * specified block.
+   *
+   * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+   **/
+  | {
+      name: 'ForceReleaseDeposit';
+      params: { account: AccountId32; block: number };
+    };
 
-export type PalletPreimageCallLike =
+export type PalletSafeModeCallLike =
   /**
-   * Register a preimage on-chain.
+   * Enter safe-mode permissionlessly for [`Config::EnterDuration`] blocks.
    *
-   * If the preimage was previously requested, no fees or deposits are taken for providing
-   * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
+   * Reserves [`Config::EnterDepositAmount`] from the caller's account.
+   * Emits an [`Event::Entered`] event on success.
+   * Errors with [`Error::Entered`] if the safe-mode is already entered.
+   * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
    **/
-  | { name: 'NotePreimage'; params: { bytes: BytesLike } }
+  | { name: 'Enter' }
   /**
-   * Clear an unrequested preimage from the runtime storage.
+   * Enter safe-mode by force for a per-origin configured number of blocks.
    *
-   * If `len` is provided, then it will be a much cheaper operation.
+   * Emits an [`Event::Entered`] event on success.
+   * Errors with [`Error::Entered`] if the safe-mode is already entered.
    *
-   * - `hash`: The hash of the preimage to be removed from the store.
-   * - `len`: The length of the preimage of `hash`.
+   * Can only be called by the [`Config::ForceEnterOrigin`] origin.
    **/
-  | { name: 'UnnotePreimage'; params: { hash: H256 } }
+  | { name: 'ForceEnter' }
   /**
-   * Request a preimage be uploaded to the chain without paying any fees or deposits.
+   * Extend the safe-mode permissionlessly for [`Config::ExtendDuration`] blocks.
    *
-   * If the preimage requests has already been provided on-chain, we unreserve any deposit
-   * a user may have paid, and take the control of the preimage out of their hands.
+   * This accumulates on top of the current remaining duration.
+   * Reserves [`Config::ExtendDepositAmount`] from the caller's account.
+   * Emits an [`Event::Extended`] event on success.
+   * Errors with [`Error::Exited`] if the safe-mode is entered.
+   * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
+   *
+   * This may be called by any signed origin with [`Config::ExtendDepositAmount`] free
+   * currency to reserve. This call can be disabled for all origins by configuring
+   * [`Config::ExtendDepositAmount`] to `None`.
    **/
-  | { name: 'RequestPreimage'; params: { hash: H256 } }
+  | { name: 'Extend' }
   /**
-   * Clear a previously made request for a preimage.
+   * Extend the safe-mode by force for a per-origin configured number of blocks.
    *
-   * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
+   * Emits an [`Event::Extended`] event on success.
+   * Errors with [`Error::Exited`] if the safe-mode is inactive.
+   *
+   * Can only be called by the [`Config::ForceExtendOrigin`] origin.
    **/
-  | { name: 'UnrequestPreimage'; params: { hash: H256 } }
+  | { name: 'ForceExtend' }
   /**
-   * Ensure that the a bulk of pre-images is upgraded.
+   * Exit safe-mode by force.
    *
-   * The caller pays no fee if at least 90% of pre-images were successfully updated.
+   * Emits an [`Event::Exited`] with [`ExitReason::Force`] event on success.
+   * Errors with [`Error::Exited`] if the safe-mode is inactive.
+   *
+   * Note: `safe-mode` will be automatically deactivated by [`Pallet::on_initialize`] hook
+   * after the block height is greater than the [`EnteredUntil`] storage item.
+   * Emits an [`Event::Exited`] with [`ExitReason::Timeout`] event when deactivated in the
+   * hook.
    **/
-  | { name: 'EnsureUpdated'; params: { hashes: Array<H256> } };
+  | { name: 'ForceExit' }
+  /**
+   * Slash a deposit for an account that entered or extended safe-mode at a given
+   * historical block.
+   *
+   * This can only be called while safe-mode is entered.
+   *
+   * Emits a [`Event::DepositSlashed`] event on success.
+   * Errors with [`Error::Entered`] if safe-mode is entered.
+   *
+   * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+   **/
+  | {
+      name: 'ForceSlashDeposit';
+      params: { account: AccountId32Like; block: number };
+    }
+  /**
+   * Permissionlessly release a deposit for an account that entered safe-mode at a
+   * given historical block.
+   *
+   * The call can be completely disabled by setting [`Config::ReleaseDelay`] to `None`.
+   * This cannot be called while safe-mode is entered and not until
+   * [`Config::ReleaseDelay`] blocks have passed since safe-mode was entered.
+   *
+   * Emits a [`Event::DepositReleased`] event on success.
+   * Errors with [`Error::Entered`] if the safe-mode is entered.
+   * Errors with [`Error::CannotReleaseYet`] if [`Config::ReleaseDelay`] block have not
+   * passed since safe-mode was entered. Errors with [`Error::NoDeposit`] if the payee has no
+   * reserved currency at the block specified.
+   **/
+  | {
+      name: 'ReleaseDeposit';
+      params: { account: AccountId32Like; block: number };
+    }
+  /**
+   * Force to release a deposit for an account that entered safe-mode at a given
+   * historical block.
+   *
+   * This can be called while safe-mode is still entered.
+   *
+   * Emits a [`Event::DepositReleased`] event on success.
+   * Errors with [`Error::Entered`] if safe-mode is entered.
+   * Errors with [`Error::NoDeposit`] if the payee has no reserved currency at the
+   * specified block.
+   *
+   * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+   **/
+  | {
+      name: 'ForceReleaseDeposit';
+      params: { account: AccountId32Like; block: number };
+    };
 
 /**
  * Contains a variant per dispatchable extrinsic that this pallet has.
@@ -3757,27 +3860,33 @@ export type MiddsStakeholderEditableStakeholderField =
  * Contains a variant per dispatchable extrinsic that this pallet has.
  **/
 export type PalletMiddsCall002 =
-  | { name: 'Register'; params: { midds: MiddsSongSong } }
+  | { name: 'Register'; params: { midds: MiddsMusicalWorkMusicalWork } }
   | {
       name: 'UpdateField';
-      params: { middsId: H256; fieldData: MiddsSongSongEditableField };
+      params: {
+        middsId: H256;
+        fieldData: MiddsMusicalWorkMusicalWorkEditableField;
+      };
     }
   | { name: 'Unregister'; params: { middsId: H256 } };
 
 export type PalletMiddsCallLike002 =
-  | { name: 'Register'; params: { midds: MiddsSongSong } }
+  | { name: 'Register'; params: { midds: MiddsMusicalWorkMusicalWork } }
   | {
       name: 'UpdateField';
-      params: { middsId: H256; fieldData: MiddsSongSongEditableField };
+      params: {
+        middsId: H256;
+        fieldData: MiddsMusicalWorkMusicalWorkEditableField;
+      };
     }
   | { name: 'Unregister'; params: { middsId: H256 } };
 
-export type MiddsSongSong = {
+export type MiddsMusicalWorkMusicalWork = {
   iswc?: AllfeatSupportIswc | undefined;
   title?: Bytes | undefined;
   duration?: number | undefined;
-  type?: AllfeatSupportSongType | undefined;
-  shares?: Array<MiddsSongShare> | undefined;
+  type?: AllfeatSupportMusicalWorkType | undefined;
+  shares?: Array<MiddsMusicalWorkShare> | undefined;
 };
 
 export type AllfeatSupportIswc = {
@@ -3787,20 +3896,20 @@ export type AllfeatSupportIswc = {
   checkDigit: number;
 };
 
-export type AllfeatSupportSongType = 'Instrumental' | 'Song';
+export type AllfeatSupportMusicalWorkType = 'Instrumental' | 'Song';
 
-export type MiddsSongShare = {
+export type MiddsMusicalWorkShare = {
   stakeholderId: H256;
-  shareInfo: MiddsSongShareInfo;
+  shareInfo: MiddsMusicalWorkShareInfo;
 };
 
-export type MiddsSongShareInfo = {
-  role: MiddsSongRole;
+export type MiddsMusicalWorkShareInfo = {
+  role: MiddsMusicalWorkRole;
   performanceShare: Percent;
   mechanicalShare: Percent;
 };
 
-export type MiddsSongRole =
+export type MiddsMusicalWorkRole =
   | 'A'
   | 'Ad'
   | 'Am'
@@ -3816,15 +3925,15 @@ export type MiddsSongRole =
   | 'Sr'
   | 'Tr';
 
-export type MiddsSongSongEditableField =
+export type MiddsMusicalWorkMusicalWorkEditableField =
   | { type: 'Iswc'; value?: AllfeatSupportIswc | undefined }
   | { type: 'Title'; value?: Bytes | undefined }
   | { type: 'Duration'; value?: number | undefined }
-  | { type: 'Type'; value?: AllfeatSupportSongType | undefined }
-  | { type: 'Shares'; value: MiddsSongSharesEditAction };
+  | { type: 'Type'; value?: AllfeatSupportMusicalWorkType | undefined }
+  | { type: 'Shares'; value: MiddsMusicalWorkSharesEditAction };
 
-export type MiddsSongSharesEditAction =
-  | { type: 'Add'; value: MiddsSongShare }
+export type MiddsMusicalWorkSharesEditAction =
+  | { type: 'Add'; value: MiddsMusicalWorkShare }
   | { type: 'Remove'; value: number };
 
 export type MelodieRuntimeOriginCaller =
@@ -3847,10 +3956,268 @@ export type PalletUtilityError =
    **/
   'TooManyCalls';
 
+export type SpConsensusBabeDigestsPreDigest =
+  | { type: 'Primary'; value: SpConsensusBabeDigestsPrimaryPreDigest }
+  | {
+      type: 'SecondaryPlain';
+      value: SpConsensusBabeDigestsSecondaryPlainPreDigest;
+    }
+  | {
+      type: 'SecondaryVRF';
+      value: SpConsensusBabeDigestsSecondaryVRFPreDigest;
+    };
+
+export type SpConsensusBabeDigestsPrimaryPreDigest = {
+  authorityIndex: number;
+  slot: SpConsensusSlotsSlot;
+  vrfSignature: SpCoreSr25519VrfVrfSignature;
+};
+
+export type SpCoreSr25519VrfVrfSignature = {
+  preOutput: FixedBytes<32>;
+  proof: FixedBytes<64>;
+};
+
+export type SpConsensusBabeDigestsSecondaryPlainPreDigest = {
+  authorityIndex: number;
+  slot: SpConsensusSlotsSlot;
+};
+
+export type SpConsensusBabeDigestsSecondaryVRFPreDigest = {
+  authorityIndex: number;
+  slot: SpConsensusSlotsSlot;
+  vrfSignature: SpCoreSr25519VrfVrfSignature;
+};
+
+export type SpConsensusBabeBabeEpochConfiguration = {
+  c: [bigint, bigint];
+  allowedSlots: SpConsensusBabeAllowedSlots;
+};
+
+/**
+ * The `Error` enum of this pallet.
+ **/
+export type PalletBabeError =
+  /**
+   * An equivocation proof provided as part of an equivocation report is invalid.
+   **/
+  | 'InvalidEquivocationProof'
+  /**
+   * A key ownership proof provided as part of an equivocation report is invalid.
+   **/
+  | 'InvalidKeyOwnershipProof'
+  /**
+   * A given equivocation report is valid but already previously reported.
+   **/
+  | 'DuplicateOffenceReport'
+  /**
+   * Submitted configuration is invalid.
+   **/
+  | 'InvalidConfiguration';
+
+export type PalletBalancesBalanceLock = {
+  id: FixedBytes<8>;
+  amount: bigint;
+  reasons: PalletBalancesReasons;
+};
+
+export type PalletBalancesReasons = 'Fee' | 'Misc' | 'All';
+
+export type PalletBalancesReserveData = { id: FixedBytes<8>; amount: bigint };
+
+export type FrameSupportTokensMiscIdAmount = {
+  id: MelodieRuntimeRuntimeHoldReason;
+  amount: bigint;
+};
+
+export type MelodieRuntimeRuntimeHoldReason =
+  | { type: 'Preimage'; value: PalletPreimageHoldReason }
+  | { type: 'SafeMode'; value: PalletSafeModeHoldReason }
+  | { type: 'Stakeholders'; value: PalletMiddsHoldReason }
+  | { type: 'MusicalWorks'; value: PalletMiddsHoldReason };
+
+export type PalletPreimageHoldReason = 'Preimage';
+
+export type PalletSafeModeHoldReason = 'EnterOrExtend';
+
+export type PalletMiddsHoldReason = 'MiddsRegistration';
+
+export type FrameSupportTokensMiscIdAmountRuntimeFreezeReason = {
+  id: MelodieRuntimeRuntimeFreezeReason;
+  amount: bigint;
+};
+
+export type MelodieRuntimeRuntimeFreezeReason = null;
+
+/**
+ * The `Error` enum of this pallet.
+ **/
+export type PalletBalancesError =
+  /**
+   * Vesting balance too high to send value.
+   **/
+  | 'VestingBalance'
+  /**
+   * Account liquidity restrictions prevent withdrawal.
+   **/
+  | 'LiquidityRestrictions'
+  /**
+   * Balance too low to send value.
+   **/
+  | 'InsufficientBalance'
+  /**
+   * Value too low to create account due to existential deposit.
+   **/
+  | 'ExistentialDeposit'
+  /**
+   * Transfer/payment would kill account.
+   **/
+  | 'Expendability'
+  /**
+   * A vesting schedule already exists for this account.
+   **/
+  | 'ExistingVestingSchedule'
+  /**
+   * Beneficiary account must pre-exist.
+   **/
+  | 'DeadAccount'
+  /**
+   * Number of named reserves exceed `MaxReserves`.
+   **/
+  | 'TooManyReserves'
+  /**
+   * Number of holds exceed `VariantCountOf<T::RuntimeHoldReason>`.
+   **/
+  | 'TooManyHolds'
+  /**
+   * Number of freezes exceed `MaxFreezes`.
+   **/
+  | 'TooManyFreezes'
+  /**
+   * The issuance cannot be modified since it is already deactivated.
+   **/
+  | 'IssuanceDeactivated'
+  /**
+   * The delta cannot be zero.
+   **/
+  | 'DeltaZero';
+
+export type PalletTransactionPaymentReleases = 'V1Ancient' | 'V2';
+
+/**
+ * The `Error` enum of this pallet.
+ **/
+export type SubstrateValidatorSetError =
+  /**
+   * Target (post-removal) validator count is below the minimum.
+   **/
+  | 'TooLowValidatorCount'
+  /**
+   * Validator is already in the validator set.
+   **/
+  | 'Duplicate';
+
+export type SpCoreCryptoKeyTypeId = FixedBytes<4>;
+
+/**
+ * Error for the session pallet.
+ **/
+export type PalletSessionError =
+  /**
+   * Invalid ownership proof.
+   **/
+  | 'InvalidProof'
+  /**
+   * No associated validator ID for account.
+   **/
+  | 'NoAssociatedValidatorId'
+  /**
+   * Registered duplicate key.
+   **/
+  | 'DuplicatedKey'
+  /**
+   * No keys are associated with this account.
+   **/
+  | 'NoKeys'
+  /**
+   * Key setting account is not live, so it's impossible to associate keys.
+   **/
+  | 'NoAccount';
+
+export type PalletGrandpaStoredState =
+  | { type: 'Live' }
+  | { type: 'PendingPause'; value: { scheduledAt: number; delay: number } }
+  | { type: 'Paused' }
+  | { type: 'PendingResume'; value: { scheduledAt: number; delay: number } };
+
+export type PalletGrandpaStoredPendingChange = {
+  scheduledAt: number;
+  delay: number;
+  nextAuthorities: Array<[SpConsensusGrandpaAppPublic, bigint]>;
+  forced?: number | undefined;
+};
+
+/**
+ * The `Error` enum of this pallet.
+ **/
+export type PalletGrandpaError =
+  /**
+   * Attempt to signal GRANDPA pause when the authority set isn't live
+   * (either paused or already pending pause).
+   **/
+  | 'PauseFailed'
+  /**
+   * Attempt to signal GRANDPA resume when the authority set isn't paused
+   * (either live or already pending resume).
+   **/
+  | 'ResumeFailed'
+  /**
+   * Attempt to signal GRANDPA change with one already pending.
+   **/
+  | 'ChangePending'
+  /**
+   * Cannot signal forced change so soon after last.
+   **/
+  | 'TooSoon'
+  /**
+   * A key ownership proof provided as part of an equivocation report is invalid.
+   **/
+  | 'InvalidKeyOwnershipProof'
+  /**
+   * An equivocation proof provided as part of an equivocation report is invalid.
+   **/
+  | 'InvalidEquivocationProof'
+  /**
+   * A given equivocation report is valid but already previously reported.
+   **/
+  | 'DuplicateOffenceReport';
+
+/**
+ * Error for the Sudo pallet.
+ **/
+export type PalletSudoError =
+  /**
+   * Sender must be the Sudo account.
+   **/
+  'RequireSudo';
+
+/**
+ * The `Error` enum of this pallet.
+ **/
+export type PalletImOnlineError =
+  /**
+   * Non existent public key.
+   **/
+  | 'InvalidKey'
+  /**
+   * Duplicated heartbeat.
+   **/
+  | 'DuplicatedHeartbeat';
+
 export type PalletIdentityRegistration = {
   judgements: Array<[number, PalletIdentityJudgement]>;
   deposit: bigint;
-  info: SharedRuntimeIdentityIdentityInfo;
+  info: PalletIdentityLegacyIdentityInfo;
 };
 
 export type PalletIdentityRegistrarInfo = {
@@ -3860,9 +4227,19 @@ export type PalletIdentityRegistrarInfo = {
 };
 
 export type PalletIdentityAuthorityProperties = {
-  suffix: Bytes;
+  accountId: AccountId32;
   allocation: number;
 };
+
+export type PalletIdentityUsernameInformation = {
+  owner: AccountId32;
+  provider: PalletIdentityProvider;
+};
+
+export type PalletIdentityProvider =
+  | { type: 'Allocation' }
+  | { type: 'AuthorityDeposit'; value: bigint }
+  | { type: 'System' };
 
 /**
  * The `Error` enum of this pallet.
@@ -3971,7 +4348,24 @@ export type PalletIdentityError =
   /**
    * The username cannot be forcefully removed because it can still be accepted.
    **/
-  | 'NotExpired';
+  | 'NotExpired'
+  /**
+   * The username cannot be removed because it's still in the grace period.
+   **/
+  | 'TooEarly'
+  /**
+   * The username cannot be removed because it is not unbinding.
+   **/
+  | 'NotUnbinding'
+  /**
+   * The username cannot be unbound because it is already unbinding.
+   **/
+  | 'AlreadyUnbinding'
+  /**
+   * The action cannot be performed because of insufficient privileges (e.g. authority
+   * trying to unbind a username provided by the system).
+   **/
+  | 'InsufficientPrivileges';
 
 export type PalletSchedulerScheduled = {
   maybeId?: FixedBytes<32> | undefined;
@@ -4017,14 +4411,77 @@ export type PalletSchedulerError =
    **/
   | 'Named';
 
+export type PalletPreimageOldRequestStatus =
+  | {
+      type: 'Unrequested';
+      value: { deposit: [AccountId32, bigint]; len: number };
+    }
+  | {
+      type: 'Requested';
+      value: {
+        deposit?: [AccountId32, bigint] | undefined;
+        count: number;
+        len?: number | undefined;
+      };
+    };
+
+export type PalletPreimageRequestStatus =
+  | {
+      type: 'Unrequested';
+      value: {
+        ticket: [AccountId32, FrameSupportTokensFungibleHoldConsideration];
+        len: number;
+      };
+    }
+  | {
+      type: 'Requested';
+      value: {
+        maybeTicket?:
+          | [AccountId32, FrameSupportTokensFungibleHoldConsideration]
+          | undefined;
+        count: number;
+        maybeLen?: number | undefined;
+      };
+    };
+
+export type FrameSupportTokensFungibleHoldConsideration = bigint;
+
 /**
- * Error for the Sudo pallet.
+ * The `Error` enum of this pallet.
  **/
-export type PalletSudoError =
+export type PalletPreimageError =
   /**
-   * Sender must be the Sudo account.
+   * Preimage is too large to store on-chain.
    **/
-  'RequireSudo';
+  | 'TooBig'
+  /**
+   * Preimage has already been noted on-chain.
+   **/
+  | 'AlreadyNoted'
+  /**
+   * The user is not authorized to perform this action.
+   **/
+  | 'NotAuthorized'
+  /**
+   * The preimage cannot be removed since it has not yet been noted.
+   **/
+  | 'NotNoted'
+  /**
+   * A preimage may not be removed when there are outstanding requests.
+   **/
+  | 'Requested'
+  /**
+   * The preimage request cannot be removed since no outstanding requests exist.
+   **/
+  | 'NotRequested'
+  /**
+   * More than `MAX_HASH_UPGRADE_BULK_COUNT` hashes were requested to be upgraded at once.
+   **/
+  | 'TooMany'
+  /**
+   * Too few hashes were requested to be upgraded (i.e. zero).
+   **/
+  | 'TooFew';
 
 export type PalletProxyProxyDefinition = {
   delegate: AccountId32;
@@ -4143,79 +4600,38 @@ export type PalletMultisigError =
    **/
   | 'AlreadyStored';
 
-export type PalletTransactionPaymentReleases = 'V1Ancient' | 'V2';
-
-export type PalletPreimageOldRequestStatus =
-  | {
-      type: 'Unrequested';
-      value: { deposit: [AccountId32, bigint]; len: number };
-    }
-  | {
-      type: 'Requested';
-      value: {
-        deposit?: [AccountId32, bigint] | undefined;
-        count: number;
-        len?: number | undefined;
-      };
-    };
-
-export type PalletPreimageRequestStatus =
-  | {
-      type: 'Unrequested';
-      value: {
-        ticket: [AccountId32, FrameSupportTokensFungibleHoldConsideration];
-        len: number;
-      };
-    }
-  | {
-      type: 'Requested';
-      value: {
-        maybeTicket?:
-          | [AccountId32, FrameSupportTokensFungibleHoldConsideration]
-          | undefined;
-        count: number;
-        maybeLen?: number | undefined;
-      };
-    };
-
-export type FrameSupportTokensFungibleHoldConsideration = bigint;
-
 /**
  * The `Error` enum of this pallet.
  **/
-export type PalletPreimageError =
+export type PalletSafeModeError =
   /**
-   * Preimage is too large to store on-chain.
+   * The safe-mode is (already or still) entered.
    **/
-  | 'TooBig'
+  | 'Entered'
   /**
-   * Preimage has already been noted on-chain.
+   * The safe-mode is (already or still) exited.
    **/
-  | 'AlreadyNoted'
+  | 'Exited'
   /**
-   * The user is not authorized to perform this action.
+   * This functionality of the pallet is disabled by the configuration.
    **/
-  | 'NotAuthorized'
+  | 'NotConfigured'
   /**
-   * The preimage cannot be removed since it has not yet been noted.
+   * There is no balance reserved.
    **/
-  | 'NotNoted'
+  | 'NoDeposit'
   /**
-   * A preimage may not be removed when there are outstanding requests.
+   * The account already has a deposit reserved and can therefore not enter or extend again.
    **/
-  | 'Requested'
+  | 'AlreadyDeposited'
   /**
-   * The preimage request cannot be removed since no outstanding requests exist.
+   * This deposit cannot be released yet.
    **/
-  | 'NotRequested'
+  | 'CannotReleaseYet'
   /**
-   * More than `MAX_HASH_UPGRADE_BULK_COUNT` hashes were requested to be upgraded at once.
+   * An error from the underlying `Currency`.
    **/
-  | 'TooMany'
-  /**
-   * Too few hashes were requested to be upgraded (i.e. zero).
-   **/
-  | 'TooFew';
+  | 'CurrencyError';
 
 export type PalletMiddsMiddsWrapper = {
   base: PalletMiddsBaseInfos;
@@ -4224,7 +4640,7 @@ export type PalletMiddsMiddsWrapper = {
 
 export type PalletMiddsBaseInfos = {
   provider: AccountId32;
-  registeredAt: number;
+  registeredAt: bigint;
 };
 
 export type FrameSupportPalletId = FixedBytes<8>;
@@ -4242,6 +4658,10 @@ export type PalletMiddsError =
    **/
   | 'PendingMiddsNotFound'
   /**
+   * Some data in the MIDDS aren't valid.
+   **/
+  | 'UnvalidMiddsData'
+  /**
    * The lock-unregister period is still going.
    **/
   | 'UnregisterLocked'
@@ -4258,13 +4678,14 @@ export type PalletMiddsError =
    **/
   | 'CantHoldFunds'
   /**
-   * The provider tried to register/update a MIDDS that exceed data size cost maximum authorized.
+   * The provider tried to register/update a MIDDS that exceed data size cost maximum
+   * authorized.
    **/
   | 'OverflowedAuthorizedDataCost';
 
-export type PalletMiddsMiddsWrapperSong = {
+export type PalletMiddsMiddsWrapperMusicalWork = {
   base: PalletMiddsBaseInfos;
-  midds: MiddsSongSong;
+  midds: MiddsMusicalWorkMusicalWork;
 };
 
 export type FrameSystemExtensionsCheckNonZeroSender = {};
@@ -4291,20 +4712,114 @@ export type FrameMetadataHashExtensionMode = 'Disabled' | 'Enabled';
 
 export type MelodieRuntimeRuntime = {};
 
+export type SpRuntimeBlock = {
+  header: Header;
+  extrinsics: Array<UncheckedExtrinsic>;
+};
+
+export type SpRuntimeExtrinsicInclusionMode = 'AllExtrinsics' | 'OnlyInherents';
+
+export type SpCoreOpaqueMetadata = Bytes;
+
+export type SpRuntimeTransactionValidityTransactionValidityError =
+  | { type: 'Invalid'; value: SpRuntimeTransactionValidityInvalidTransaction }
+  | { type: 'Unknown'; value: SpRuntimeTransactionValidityUnknownTransaction };
+
+export type SpRuntimeTransactionValidityInvalidTransaction =
+  | { type: 'Call' }
+  | { type: 'Payment' }
+  | { type: 'Future' }
+  | { type: 'Stale' }
+  | { type: 'BadProof' }
+  | { type: 'AncientBirthBlock' }
+  | { type: 'ExhaustsResources' }
+  | { type: 'Custom'; value: number }
+  | { type: 'BadMandatory' }
+  | { type: 'MandatoryValidation' }
+  | { type: 'BadSigner' }
+  | { type: 'IndeterminateImplicit' }
+  | { type: 'UnknownOrigin' };
+
+export type SpRuntimeTransactionValidityUnknownTransaction =
+  | { type: 'CannotLookup' }
+  | { type: 'NoUnsignedValidator' }
+  | { type: 'Custom'; value: number };
+
+export type SpInherentsInherentData = { data: Array<[FixedBytes<8>, Bytes]> };
+
+export type SpInherentsCheckInherentsResult = {
+  okay: boolean;
+  fatalError: boolean;
+  errors: SpInherentsInherentData;
+};
+
+export type SpRuntimeTransactionValidityTransactionSource =
+  | 'InBlock'
+  | 'Local'
+  | 'External';
+
+export type SpRuntimeTransactionValidityValidTransaction = {
+  priority: bigint;
+  requires: Array<Bytes>;
+  provides: Array<Bytes>;
+  longevity: bigint;
+  propagate: boolean;
+};
+
+export type SpRuntimeOpaqueValue = Bytes;
+
+export type SpConsensusBabeBabeConfiguration = {
+  slotDuration: bigint;
+  epochLength: bigint;
+  c: [bigint, bigint];
+  authorities: Array<[SpConsensusBabeAppPublic, bigint]>;
+  randomness: FixedBytes<32>;
+  allowedSlots: SpConsensusBabeAllowedSlots;
+};
+
+export type SpConsensusBabeEpoch = {
+  epochIndex: bigint;
+  startSlot: SpConsensusSlotsSlot;
+  duration: bigint;
+  authorities: Array<[SpConsensusBabeAppPublic, bigint]>;
+  randomness: FixedBytes<32>;
+  config: SpConsensusBabeBabeEpochConfiguration;
+};
+
+export type SpConsensusBabeOpaqueKeyOwnershipProof = Bytes;
+
+export type PalletTransactionPaymentRuntimeDispatchInfo = {
+  weight: SpWeightsWeightV2Weight;
+  class: FrameSupportDispatchDispatchClass;
+  partialFee: bigint;
+};
+
+export type PalletTransactionPaymentFeeDetails = {
+  inclusionFee?: PalletTransactionPaymentInclusionFee | undefined;
+  tip: bigint;
+};
+
+export type PalletTransactionPaymentInclusionFee = {
+  baseFee: bigint;
+  lenFee: bigint;
+  adjustedWeightFee: bigint;
+};
+
 export type MelodieRuntimeRuntimeError =
   | { pallet: 'System'; palletError: FrameSystemError }
-  | { pallet: 'Balances'; palletError: PalletBalancesError }
+  | { pallet: 'Utility'; palletError: PalletUtilityError }
   | { pallet: 'Babe'; palletError: PalletBabeError }
-  | { pallet: 'ImOnline'; palletError: PalletImOnlineError }
+  | { pallet: 'Balances'; palletError: PalletBalancesError }
   | { pallet: 'ValidatorSet'; palletError: SubstrateValidatorSetError }
   | { pallet: 'Session'; palletError: PalletSessionError }
   | { pallet: 'Grandpa'; palletError: PalletGrandpaError }
-  | { pallet: 'Utility'; palletError: PalletUtilityError }
+  | { pallet: 'Sudo'; palletError: PalletSudoError }
+  | { pallet: 'ImOnline'; palletError: PalletImOnlineError }
   | { pallet: 'Identity'; palletError: PalletIdentityError }
   | { pallet: 'Scheduler'; palletError: PalletSchedulerError }
-  | { pallet: 'Sudo'; palletError: PalletSudoError }
+  | { pallet: 'Preimage'; palletError: PalletPreimageError }
   | { pallet: 'Proxy'; palletError: PalletProxyError }
   | { pallet: 'Multisig'; palletError: PalletMultisigError }
-  | { pallet: 'Preimage'; palletError: PalletPreimageError }
+  | { pallet: 'SafeMode'; palletError: PalletSafeModeError }
   | { pallet: 'Stakeholders'; palletError: PalletMiddsError }
   | { pallet: 'MusicalWorks'; palletError: PalletMiddsError };

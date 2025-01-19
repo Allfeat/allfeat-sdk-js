@@ -6,7 +6,6 @@ import type {
   RpcVersion,
 } from 'dedot/types';
 import type {
-  DispatchInfo,
   DispatchError,
   AccountId32,
   H256,
@@ -15,12 +14,14 @@ import type {
   FixedBytes,
 } from 'dedot/codecs';
 import type {
+  FrameSystemDispatchEventInfo,
   MelodieRuntimeRuntimeTask,
   FrameSupportTokensMiscBalanceStatus,
-  PalletImOnlineSr25519AppSr25519Public,
   SpConsensusGrandpaAppPublic,
+  PalletImOnlineSr25519AppSr25519Public,
   MelodieRuntimePalletsProxyProxyType,
   PalletMultisigTimepoint,
+  PalletSafeModeExitReason,
 } from './types';
 
 export interface ChainEvents<Rv extends RpcVersion>
@@ -36,7 +37,7 @@ export interface ChainEvents<Rv extends RpcVersion>
       Rv,
       'System',
       'ExtrinsicSuccess',
-      { dispatchInfo: DispatchInfo }
+      { dispatchInfo: FrameSystemDispatchEventInfo }
     >;
 
     /**
@@ -46,7 +47,10 @@ export interface ChainEvents<Rv extends RpcVersion>
       Rv,
       'System',
       'ExtrinsicFailed',
-      { dispatchError: DispatchError; dispatchInfo: DispatchInfo }
+      {
+        dispatchError: DispatchError;
+        dispatchInfo: FrameSystemDispatchEventInfo;
+      }
     >;
 
     /**
@@ -122,6 +126,66 @@ export interface ChainEvents<Rv extends RpcVersion>
       'System',
       'UpgradeAuthorized',
       { codeHash: H256; checkVersion: boolean }
+    >;
+
+    /**
+     * Generic pallet event
+     **/
+    [prop: string]: GenericPalletEvent<Rv>;
+  };
+  /**
+   * Pallet `Utility`'s events
+   **/
+  utility: {
+    /**
+     * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
+     * well as the error.
+     **/
+    BatchInterrupted: GenericPalletEvent<
+      Rv,
+      'Utility',
+      'BatchInterrupted',
+      { index: number; error: DispatchError }
+    >;
+
+    /**
+     * Batch of dispatches completed fully with no error.
+     **/
+    BatchCompleted: GenericPalletEvent<Rv, 'Utility', 'BatchCompleted', null>;
+
+    /**
+     * Batch of dispatches completed but has errors.
+     **/
+    BatchCompletedWithErrors: GenericPalletEvent<
+      Rv,
+      'Utility',
+      'BatchCompletedWithErrors',
+      null
+    >;
+
+    /**
+     * A single item within a Batch of dispatches has completed with no error.
+     **/
+    ItemCompleted: GenericPalletEvent<Rv, 'Utility', 'ItemCompleted', null>;
+
+    /**
+     * A single item within a Batch of dispatches has completed with error.
+     **/
+    ItemFailed: GenericPalletEvent<
+      Rv,
+      'Utility',
+      'ItemFailed',
+      { error: DispatchError }
+    >;
+
+    /**
+     * A call was dispatched.
+     **/
+    DispatchedAs: GenericPalletEvent<
+      Rv,
+      'Utility',
+      'DispatchedAs',
+      { result: Result<[], DispatchError> }
     >;
 
     /**
@@ -361,32 +425,18 @@ export interface ChainEvents<Rv extends RpcVersion>
     [prop: string]: GenericPalletEvent<Rv>;
   };
   /**
-   * Pallet `ImOnline`'s events
+   * Pallet `TransactionPayment`'s events
    **/
-  imOnline: {
+  transactionPayment: {
     /**
-     * A new heartbeat was received from `AuthorityId`.
+     * A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
+     * has been paid by `who`.
      **/
-    HeartbeatReceived: GenericPalletEvent<
+    TransactionFeePaid: GenericPalletEvent<
       Rv,
-      'ImOnline',
-      'HeartbeatReceived',
-      { authorityId: PalletImOnlineSr25519AppSr25519Public }
-    >;
-
-    /**
-     * At the end of the session, no offence was committed.
-     **/
-    AllGood: GenericPalletEvent<Rv, 'ImOnline', 'AllGood', null>;
-
-    /**
-     * At the end of the session, at least one validator was found to be offline.
-     **/
-    SomeOffline: GenericPalletEvent<
-      Rv,
-      'ImOnline',
-      'SomeOffline',
-      { offline: Array<[AccountId32, AccountId32]> }
+      'TransactionPayment',
+      'TransactionFeePaid',
+      { who: AccountId32; actualFee: bigint; tip: bigint }
     >;
 
     /**
@@ -473,58 +523,96 @@ export interface ChainEvents<Rv extends RpcVersion>
     [prop: string]: GenericPalletEvent<Rv>;
   };
   /**
-   * Pallet `Utility`'s events
+   * Pallet `Sudo`'s events
    **/
-  utility: {
+  sudo: {
     /**
-     * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
-     * well as the error.
+     * A sudo call just took place.
      **/
-    BatchInterrupted: GenericPalletEvent<
+    Sudid: GenericPalletEvent<
       Rv,
-      'Utility',
-      'BatchInterrupted',
-      { index: number; error: DispatchError }
+      'Sudo',
+      'Sudid',
+      {
+        /**
+         * The result of the call made by the sudo user.
+         **/
+        sudoResult: Result<[], DispatchError>;
+      }
     >;
 
     /**
-     * Batch of dispatches completed fully with no error.
+     * The sudo key has been updated.
      **/
-    BatchCompleted: GenericPalletEvent<Rv, 'Utility', 'BatchCompleted', null>;
-
-    /**
-     * Batch of dispatches completed but has errors.
-     **/
-    BatchCompletedWithErrors: GenericPalletEvent<
+    KeyChanged: GenericPalletEvent<
       Rv,
-      'Utility',
-      'BatchCompletedWithErrors',
-      null
+      'Sudo',
+      'KeyChanged',
+      {
+        /**
+         * The old sudo key (if one was previously set).
+         **/
+        old?: AccountId32 | undefined;
+
+        /**
+         * The new sudo key (if one was set).
+         **/
+        new: AccountId32;
+      }
     >;
 
     /**
-     * A single item within a Batch of dispatches has completed with no error.
+     * The key was permanently removed.
      **/
-    ItemCompleted: GenericPalletEvent<Rv, 'Utility', 'ItemCompleted', null>;
+    KeyRemoved: GenericPalletEvent<Rv, 'Sudo', 'KeyRemoved', null>;
 
     /**
-     * A single item within a Batch of dispatches has completed with error.
+     * A [sudo_as](Pallet::sudo_as) call just took place.
      **/
-    ItemFailed: GenericPalletEvent<
+    SudoAsDone: GenericPalletEvent<
       Rv,
-      'Utility',
-      'ItemFailed',
-      { error: DispatchError }
+      'Sudo',
+      'SudoAsDone',
+      {
+        /**
+         * The result of the call made by the sudo user.
+         **/
+        sudoResult: Result<[], DispatchError>;
+      }
     >;
 
     /**
-     * A call was dispatched.
+     * Generic pallet event
      **/
-    DispatchedAs: GenericPalletEvent<
+    [prop: string]: GenericPalletEvent<Rv>;
+  };
+  /**
+   * Pallet `ImOnline`'s events
+   **/
+  imOnline: {
+    /**
+     * A new heartbeat was received from `AuthorityId`.
+     **/
+    HeartbeatReceived: GenericPalletEvent<
       Rv,
-      'Utility',
-      'DispatchedAs',
-      { result: Result<[], DispatchError> }
+      'ImOnline',
+      'HeartbeatReceived',
+      { authorityId: PalletImOnlineSr25519AppSr25519Public }
+    >;
+
+    /**
+     * At the end of the session, no offence was committed.
+     **/
+    AllGood: GenericPalletEvent<Rv, 'ImOnline', 'AllGood', null>;
+
+    /**
+     * At the end of the session, at least one validator was found to be offline.
+     **/
+    SomeOffline: GenericPalletEvent<
+      Rv,
+      'ImOnline',
+      'SomeOffline',
+      { offline: Array<[AccountId32, AccountId32]> }
     >;
 
     /**
@@ -617,6 +705,26 @@ export interface ChainEvents<Rv extends RpcVersion>
     >;
 
     /**
+     * An account's sub-identities were set (in bulk).
+     **/
+    SubIdentitiesSet: GenericPalletEvent<
+      Rv,
+      'Identity',
+      'SubIdentitiesSet',
+      { main: AccountId32; numberOfSubs: number; newDeposit: bigint }
+    >;
+
+    /**
+     * A given sub-account's associated name was changed by its super-identity.
+     **/
+    SubIdentityRenamed: GenericPalletEvent<
+      Rv,
+      'Identity',
+      'SubIdentityRenamed',
+      { sub: AccountId32; main: AccountId32 }
+    >;
+
+    /**
      * A sub-identity was removed from an identity and the deposit freed.
      **/
     SubIdentityRemoved: GenericPalletEvent<
@@ -706,6 +814,36 @@ export interface ChainEvents<Rv extends RpcVersion>
       'Identity',
       'DanglingUsernameRemoved',
       { who: AccountId32; username: Bytes }
+    >;
+
+    /**
+     * A username has been unbound.
+     **/
+    UsernameUnbound: GenericPalletEvent<
+      Rv,
+      'Identity',
+      'UsernameUnbound',
+      { username: Bytes }
+    >;
+
+    /**
+     * A username has been removed.
+     **/
+    UsernameRemoved: GenericPalletEvent<
+      Rv,
+      'Identity',
+      'UsernameRemoved',
+      { username: Bytes }
+    >;
+
+    /**
+     * A username has been killed.
+     **/
+    UsernameKilled: GenericPalletEvent<
+      Rv,
+      'Identity',
+      'UsernameKilled',
+      { username: Bytes }
     >;
 
     /**
@@ -823,63 +961,23 @@ export interface ChainEvents<Rv extends RpcVersion>
     [prop: string]: GenericPalletEvent<Rv>;
   };
   /**
-   * Pallet `Sudo`'s events
+   * Pallet `Preimage`'s events
    **/
-  sudo: {
+  preimage: {
     /**
-     * A sudo call just took place.
+     * A preimage has been noted.
      **/
-    Sudid: GenericPalletEvent<
-      Rv,
-      'Sudo',
-      'Sudid',
-      {
-        /**
-         * The result of the call made by the sudo user.
-         **/
-        sudoResult: Result<[], DispatchError>;
-      }
-    >;
+    Noted: GenericPalletEvent<Rv, 'Preimage', 'Noted', { hash: H256 }>;
 
     /**
-     * The sudo key has been updated.
+     * A preimage has been requested.
      **/
-    KeyChanged: GenericPalletEvent<
-      Rv,
-      'Sudo',
-      'KeyChanged',
-      {
-        /**
-         * The old sudo key (if one was previously set).
-         **/
-        old?: AccountId32 | undefined;
-
-        /**
-         * The new sudo key (if one was set).
-         **/
-        new: AccountId32;
-      }
-    >;
+    Requested: GenericPalletEvent<Rv, 'Preimage', 'Requested', { hash: H256 }>;
 
     /**
-     * The key was permanently removed.
+     * A preimage has ben cleared.
      **/
-    KeyRemoved: GenericPalletEvent<Rv, 'Sudo', 'KeyRemoved', null>;
-
-    /**
-     * A [sudo_as](Pallet::sudo_as) call just took place.
-     **/
-    SudoAsDone: GenericPalletEvent<
-      Rv,
-      'Sudo',
-      'SudoAsDone',
-      {
-        /**
-         * The result of the call made by the sudo user.
-         **/
-        sudoResult: Result<[], DispatchError>;
-      }
-    >;
+    Cleared: GenericPalletEvent<Rv, 'Preimage', 'Cleared', { hash: H256 }>;
 
     /**
      * Generic pallet event
@@ -1031,43 +1129,72 @@ export interface ChainEvents<Rv extends RpcVersion>
     [prop: string]: GenericPalletEvent<Rv>;
   };
   /**
-   * Pallet `TransactionPayment`'s events
+   * Pallet `SafeMode`'s events
    **/
-  transactionPayment: {
+  safeMode: {
     /**
-     * A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
-     * has been paid by `who`.
+     * The safe-mode was entered until inclusively this block.
      **/
-    TransactionFeePaid: GenericPalletEvent<
+    Entered: GenericPalletEvent<Rv, 'SafeMode', 'Entered', { until: number }>;
+
+    /**
+     * The safe-mode was extended until inclusively this block.
+     **/
+    Extended: GenericPalletEvent<Rv, 'SafeMode', 'Extended', { until: number }>;
+
+    /**
+     * Exited the safe-mode for a specific reason.
+     **/
+    Exited: GenericPalletEvent<
       Rv,
-      'TransactionPayment',
-      'TransactionFeePaid',
-      { who: AccountId32; actualFee: bigint; tip: bigint }
+      'SafeMode',
+      'Exited',
+      { reason: PalletSafeModeExitReason }
     >;
 
     /**
-     * Generic pallet event
+     * An account reserved funds for either entering or extending the safe-mode.
      **/
-    [prop: string]: GenericPalletEvent<Rv>;
-  };
-  /**
-   * Pallet `Preimage`'s events
-   **/
-  preimage: {
-    /**
-     * A preimage has been noted.
-     **/
-    Noted: GenericPalletEvent<Rv, 'Preimage', 'Noted', { hash: H256 }>;
+    DepositPlaced: GenericPalletEvent<
+      Rv,
+      'SafeMode',
+      'DepositPlaced',
+      { account: AccountId32; amount: bigint }
+    >;
 
     /**
-     * A preimage has been requested.
+     * An account had a reserve released that was reserved.
      **/
-    Requested: GenericPalletEvent<Rv, 'Preimage', 'Requested', { hash: H256 }>;
+    DepositReleased: GenericPalletEvent<
+      Rv,
+      'SafeMode',
+      'DepositReleased',
+      { account: AccountId32; amount: bigint }
+    >;
 
     /**
-     * A preimage has ben cleared.
+     * An account had reserve slashed that was reserved.
      **/
-    Cleared: GenericPalletEvent<Rv, 'Preimage', 'Cleared', { hash: H256 }>;
+    DepositSlashed: GenericPalletEvent<
+      Rv,
+      'SafeMode',
+      'DepositSlashed',
+      { account: AccountId32; amount: bigint }
+    >;
+
+    /**
+     * Could not hold funds for entering or extending the safe-mode.
+     *
+     * This error comes from the underlying `Currency`.
+     **/
+    CannotDeposit: GenericPalletEvent<Rv, 'SafeMode', 'CannotDeposit', null>;
+
+    /**
+     * Could not release funds for entering or extending the safe-mode.
+     *
+     * This error comes from the underlying `Currency`.
+     **/
+    CannotRelease: GenericPalletEvent<Rv, 'SafeMode', 'CannotRelease', null>;
 
     /**
      * Generic pallet event

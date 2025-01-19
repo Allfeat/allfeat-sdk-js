@@ -24,24 +24,24 @@ import type {
   SpRuntimeMultiSignature,
   FrameSystemEventRecord,
   MelodieRuntimeRuntimeTask,
-  PalletBalancesAdjustmentDirection,
+  MelodieRuntimeOriginCaller,
+  SpWeightsWeightV2Weight,
   SpConsensusSlotsEquivocationProof,
   SpSessionMembershipProof,
   SpConsensusBabeDigestsNextConfigDescriptor,
-  PalletImOnlineHeartbeat,
-  PalletImOnlineSr25519AppSr25519Signature,
+  PalletBalancesAdjustmentDirection,
   MelodieRuntimePalletsSessionSessionKeys,
   SpConsensusGrandpaEquivocationProof,
-  MelodieRuntimeOriginCaller,
-  SpWeightsWeightV2Weight,
-  SharedRuntimeIdentityIdentityInfo,
+  PalletImOnlineHeartbeat,
+  PalletImOnlineSr25519AppSr25519Signature,
+  PalletIdentityLegacyIdentityInfo,
   PalletIdentityJudgement,
   MelodieRuntimePalletsProxyProxyType,
   PalletMultisigTimepoint,
   MiddsStakeholderStakeholder,
   MiddsStakeholderEditableStakeholderField,
-  MiddsSongSong,
-  MiddsSongSongEditableField,
+  MiddsMusicalWorkMusicalWork,
+  MiddsMusicalWorkMusicalWorkEditableField,
 } from './types';
 
 export type ChainSubmittableExtrinsic<
@@ -325,6 +325,357 @@ export interface ChainTx<Rv extends RpcVersion>
     [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
   };
   /**
+   * Pallet `Utility`'s transaction calls
+   **/
+  utility: {
+    /**
+     * Send a batch of dispatch calls.
+     *
+     * May be called from any origin except `None`.
+     *
+     * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+     * exceed the constant: `batched_calls_limit` (available in constant metadata).
+     *
+     * If origin is root then the calls are dispatched without checking origin filter. (This
+     * includes bypassing `frame_system::Config::BaseCallFilter`).
+     *
+     * ## Complexity
+     * - O(C) where C is the number of calls to be batched.
+     *
+     * This will return `Ok` in all circumstances. To determine the success of the batch, an
+     * event is deposited. If a call failed and the batch was interrupted, then the
+     * `BatchInterrupted` event is deposited, along with the number of successful calls made
+     * and the error of the failed call. If all were successful, then the `BatchCompleted`
+     * event is deposited.
+     *
+     * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
+     **/
+    batch: GenericTxCall<
+      Rv,
+      (
+        calls: Array<MelodieRuntimeRuntimeCallLike>,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Utility';
+          palletCall: {
+            name: 'Batch';
+            params: { calls: Array<MelodieRuntimeRuntimeCallLike> };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Send a call through an indexed pseudonym of the sender.
+     *
+     * Filter from origin are passed along. The call will be dispatched with an origin which
+     * use the same filter as the origin of this call.
+     *
+     * NOTE: If you need to ensure that any account-based filtering is not honored (i.e.
+     * because you expect `proxy` to have been used prior in the call stack and you do not want
+     * the call restrictions to apply to any sub-accounts), then use `as_multi_threshold_1`
+     * in the Multisig pallet instead.
+     *
+     * NOTE: Prior to version *12, this was called `as_limited_sub`.
+     *
+     * The dispatch origin for this call must be _Signed_.
+     *
+     * @param {number} index
+     * @param {MelodieRuntimeRuntimeCallLike} call
+     **/
+    asDerivative: GenericTxCall<
+      Rv,
+      (
+        index: number,
+        call: MelodieRuntimeRuntimeCallLike,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Utility';
+          palletCall: {
+            name: 'AsDerivative';
+            params: { index: number; call: MelodieRuntimeRuntimeCallLike };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Send a batch of dispatch calls and atomically execute them.
+     * The whole transaction will rollback and fail if any of the calls failed.
+     *
+     * May be called from any origin except `None`.
+     *
+     * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+     * exceed the constant: `batched_calls_limit` (available in constant metadata).
+     *
+     * If origin is root then the calls are dispatched without checking origin filter. (This
+     * includes bypassing `frame_system::Config::BaseCallFilter`).
+     *
+     * ## Complexity
+     * - O(C) where C is the number of calls to be batched.
+     *
+     * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
+     **/
+    batchAll: GenericTxCall<
+      Rv,
+      (
+        calls: Array<MelodieRuntimeRuntimeCallLike>,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Utility';
+          palletCall: {
+            name: 'BatchAll';
+            params: { calls: Array<MelodieRuntimeRuntimeCallLike> };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Dispatches a function call with a provided origin.
+     *
+     * The dispatch origin for this call must be _Root_.
+     *
+     * ## Complexity
+     * - O(1).
+     *
+     * @param {MelodieRuntimeOriginCaller} asOrigin
+     * @param {MelodieRuntimeRuntimeCallLike} call
+     **/
+    dispatchAs: GenericTxCall<
+      Rv,
+      (
+        asOrigin: MelodieRuntimeOriginCaller,
+        call: MelodieRuntimeRuntimeCallLike,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Utility';
+          palletCall: {
+            name: 'DispatchAs';
+            params: {
+              asOrigin: MelodieRuntimeOriginCaller;
+              call: MelodieRuntimeRuntimeCallLike;
+            };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Send a batch of dispatch calls.
+     * Unlike `batch`, it allows errors and won't interrupt.
+     *
+     * May be called from any origin except `None`.
+     *
+     * - `calls`: The calls to be dispatched from the same origin. The number of call must not
+     * exceed the constant: `batched_calls_limit` (available in constant metadata).
+     *
+     * If origin is root then the calls are dispatch without checking origin filter. (This
+     * includes bypassing `frame_system::Config::BaseCallFilter`).
+     *
+     * ## Complexity
+     * - O(C) where C is the number of calls to be batched.
+     *
+     * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
+     **/
+    forceBatch: GenericTxCall<
+      Rv,
+      (
+        calls: Array<MelodieRuntimeRuntimeCallLike>,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Utility';
+          palletCall: {
+            name: 'ForceBatch';
+            params: { calls: Array<MelodieRuntimeRuntimeCallLike> };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Dispatch a function call with a specified weight.
+     *
+     * This function does not check the weight of the call, and instead allows the
+     * Root origin to specify the weight of the call.
+     *
+     * The dispatch origin for this call must be _Root_.
+     *
+     * @param {MelodieRuntimeRuntimeCallLike} call
+     * @param {SpWeightsWeightV2Weight} weight
+     **/
+    withWeight: GenericTxCall<
+      Rv,
+      (
+        call: MelodieRuntimeRuntimeCallLike,
+        weight: SpWeightsWeightV2Weight,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Utility';
+          palletCall: {
+            name: 'WithWeight';
+            params: {
+              call: MelodieRuntimeRuntimeCallLike;
+              weight: SpWeightsWeightV2Weight;
+            };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Generic pallet tx call
+     **/
+    [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
+  };
+  /**
+   * Pallet `Babe`'s transaction calls
+   **/
+  babe: {
+    /**
+     * Report authority equivocation/misbehavior. This method will verify
+     * the equivocation proof and validate the given key ownership proof
+     * against the extracted offender. If both are valid, the offence will
+     * be reported.
+     *
+     * @param {SpConsensusSlotsEquivocationProof} equivocationProof
+     * @param {SpSessionMembershipProof} keyOwnerProof
+     **/
+    reportEquivocation: GenericTxCall<
+      Rv,
+      (
+        equivocationProof: SpConsensusSlotsEquivocationProof,
+        keyOwnerProof: SpSessionMembershipProof,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Babe';
+          palletCall: {
+            name: 'ReportEquivocation';
+            params: {
+              equivocationProof: SpConsensusSlotsEquivocationProof;
+              keyOwnerProof: SpSessionMembershipProof;
+            };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Report authority equivocation/misbehavior. This method will verify
+     * the equivocation proof and validate the given key ownership proof
+     * against the extracted offender. If both are valid, the offence will
+     * be reported.
+     * This extrinsic must be called unsigned and it is expected that only
+     * block authors will call it (validated in `ValidateUnsigned`), as such
+     * if the block author is defined it will be defined as the equivocation
+     * reporter.
+     *
+     * @param {SpConsensusSlotsEquivocationProof} equivocationProof
+     * @param {SpSessionMembershipProof} keyOwnerProof
+     **/
+    reportEquivocationUnsigned: GenericTxCall<
+      Rv,
+      (
+        equivocationProof: SpConsensusSlotsEquivocationProof,
+        keyOwnerProof: SpSessionMembershipProof,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Babe';
+          palletCall: {
+            name: 'ReportEquivocationUnsigned';
+            params: {
+              equivocationProof: SpConsensusSlotsEquivocationProof;
+              keyOwnerProof: SpSessionMembershipProof;
+            };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Plan an epoch config change. The epoch config change is recorded and will be enacted on
+     * the next call to `enact_epoch_change`. The config will be activated one epoch after.
+     * Multiple calls to this method will replace any existing planned config change that had
+     * not been enacted yet.
+     *
+     * @param {SpConsensusBabeDigestsNextConfigDescriptor} config
+     **/
+    planConfigChange: GenericTxCall<
+      Rv,
+      (
+        config: SpConsensusBabeDigestsNextConfigDescriptor,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Babe';
+          palletCall: {
+            name: 'PlanConfigChange';
+            params: { config: SpConsensusBabeDigestsNextConfigDescriptor };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Generic pallet tx call
+     **/
+    [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
+  };
+  /**
+   * Pallet `Timestamp`'s transaction calls
+   **/
+  timestamp: {
+    /**
+     * Set the current time.
+     *
+     * This call should be invoked exactly once per block. It will panic at the finalization
+     * phase, if this call hasn't been invoked by that time.
+     *
+     * The timestamp should be greater than the previous one by the amount specified by
+     * [`Config::MinimumPeriod`].
+     *
+     * The dispatch origin for this call must be _None_.
+     *
+     * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
+     * that changing the complexity of this call could result exhausting the resources in a
+     * block to execute any other calls.
+     *
+     * ## Complexity
+     * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
+     * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
+     * `on_finalize`)
+     * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
+     *
+     * @param {bigint} now
+     **/
+    set: GenericTxCall<
+      Rv,
+      (now: bigint) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Timestamp';
+          palletCall: {
+            name: 'Set';
+            params: { now: bigint };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Generic pallet tx call
+     **/
+    [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
+  };
+  /**
    * Pallet `Balances`'s transaction calls
    **/
   balances: {
@@ -593,184 +944,6 @@ export interface ChainTx<Rv extends RpcVersion>
     [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
   };
   /**
-   * Pallet `Babe`'s transaction calls
-   **/
-  babe: {
-    /**
-     * Report authority equivocation/misbehavior. This method will verify
-     * the equivocation proof and validate the given key ownership proof
-     * against the extracted offender. If both are valid, the offence will
-     * be reported.
-     *
-     * @param {SpConsensusSlotsEquivocationProof} equivocationProof
-     * @param {SpSessionMembershipProof} keyOwnerProof
-     **/
-    reportEquivocation: GenericTxCall<
-      Rv,
-      (
-        equivocationProof: SpConsensusSlotsEquivocationProof,
-        keyOwnerProof: SpSessionMembershipProof,
-      ) => ChainSubmittableExtrinsic<
-        Rv,
-        {
-          pallet: 'Babe';
-          palletCall: {
-            name: 'ReportEquivocation';
-            params: {
-              equivocationProof: SpConsensusSlotsEquivocationProof;
-              keyOwnerProof: SpSessionMembershipProof;
-            };
-          };
-        }
-      >
-    >;
-
-    /**
-     * Report authority equivocation/misbehavior. This method will verify
-     * the equivocation proof and validate the given key ownership proof
-     * against the extracted offender. If both are valid, the offence will
-     * be reported.
-     * This extrinsic must be called unsigned and it is expected that only
-     * block authors will call it (validated in `ValidateUnsigned`), as such
-     * if the block author is defined it will be defined as the equivocation
-     * reporter.
-     *
-     * @param {SpConsensusSlotsEquivocationProof} equivocationProof
-     * @param {SpSessionMembershipProof} keyOwnerProof
-     **/
-    reportEquivocationUnsigned: GenericTxCall<
-      Rv,
-      (
-        equivocationProof: SpConsensusSlotsEquivocationProof,
-        keyOwnerProof: SpSessionMembershipProof,
-      ) => ChainSubmittableExtrinsic<
-        Rv,
-        {
-          pallet: 'Babe';
-          palletCall: {
-            name: 'ReportEquivocationUnsigned';
-            params: {
-              equivocationProof: SpConsensusSlotsEquivocationProof;
-              keyOwnerProof: SpSessionMembershipProof;
-            };
-          };
-        }
-      >
-    >;
-
-    /**
-     * Plan an epoch config change. The epoch config change is recorded and will be enacted on
-     * the next call to `enact_epoch_change`. The config will be activated one epoch after.
-     * Multiple calls to this method will replace any existing planned config change that had
-     * not been enacted yet.
-     *
-     * @param {SpConsensusBabeDigestsNextConfigDescriptor} config
-     **/
-    planConfigChange: GenericTxCall<
-      Rv,
-      (
-        config: SpConsensusBabeDigestsNextConfigDescriptor,
-      ) => ChainSubmittableExtrinsic<
-        Rv,
-        {
-          pallet: 'Babe';
-          palletCall: {
-            name: 'PlanConfigChange';
-            params: { config: SpConsensusBabeDigestsNextConfigDescriptor };
-          };
-        }
-      >
-    >;
-
-    /**
-     * Generic pallet tx call
-     **/
-    [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
-  };
-  /**
-   * Pallet `Timestamp`'s transaction calls
-   **/
-  timestamp: {
-    /**
-     * Set the current time.
-     *
-     * This call should be invoked exactly once per block. It will panic at the finalization
-     * phase, if this call hasn't been invoked by that time.
-     *
-     * The timestamp should be greater than the previous one by the amount specified by
-     * [`Config::MinimumPeriod`].
-     *
-     * The dispatch origin for this call must be _None_.
-     *
-     * This dispatch class is _Mandatory_ to ensure it gets executed in the block. Be aware
-     * that changing the complexity of this call could result exhausting the resources in a
-     * block to execute any other calls.
-     *
-     * ## Complexity
-     * - `O(1)` (Note that implementations of `OnTimestampSet` must also be `O(1)`)
-     * - 1 storage read and 1 storage mutation (codec `O(1)` because of `DidUpdate::take` in
-     * `on_finalize`)
-     * - 1 event handler `on_timestamp_set`. Must be `O(1)`.
-     *
-     * @param {bigint} now
-     **/
-    set: GenericTxCall<
-      Rv,
-      (now: bigint) => ChainSubmittableExtrinsic<
-        Rv,
-        {
-          pallet: 'Timestamp';
-          palletCall: {
-            name: 'Set';
-            params: { now: bigint };
-          };
-        }
-      >
-    >;
-
-    /**
-     * Generic pallet tx call
-     **/
-    [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
-  };
-  /**
-   * Pallet `ImOnline`'s transaction calls
-   **/
-  imOnline: {
-    /**
-     * ## Complexity:
-     * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
-     * - `O(K)`: decoding of length `K`
-     *
-     * @param {PalletImOnlineHeartbeat} heartbeat
-     * @param {PalletImOnlineSr25519AppSr25519Signature} signature
-     **/
-    heartbeat: GenericTxCall<
-      Rv,
-      (
-        heartbeat: PalletImOnlineHeartbeat,
-        signature: PalletImOnlineSr25519AppSr25519Signature,
-      ) => ChainSubmittableExtrinsic<
-        Rv,
-        {
-          pallet: 'ImOnline';
-          palletCall: {
-            name: 'Heartbeat';
-            params: {
-              heartbeat: PalletImOnlineHeartbeat;
-              signature: PalletImOnlineSr25519AppSr25519Signature;
-            };
-          };
-        }
-      >
-    >;
-
-    /**
-     * Generic pallet tx call
-     **/
-    [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
-  };
-  /**
    * Pallet `ValidatorSet`'s transaction calls
    **/
   validatorSet: {
@@ -1004,139 +1177,100 @@ export interface ChainTx<Rv extends RpcVersion>
     [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
   };
   /**
-   * Pallet `Utility`'s transaction calls
+   * Pallet `Sudo`'s transaction calls
    **/
-  utility: {
+  sudo: {
     /**
-     * Send a batch of dispatch calls.
+     * Authenticates the sudo key and dispatches a function call with `Root` origin.
      *
-     * May be called from any origin except `None`.
-     *
-     * - `calls`: The calls to be dispatched from the same origin. The number of call must not
-     * exceed the constant: `batched_calls_limit` (available in constant metadata).
-     *
-     * If origin is root then the calls are dispatched without checking origin filter. (This
-     * includes bypassing `frame_system::Config::BaseCallFilter`).
-     *
-     * ## Complexity
-     * - O(C) where C is the number of calls to be batched.
-     *
-     * This will return `Ok` in all circumstances. To determine the success of the batch, an
-     * event is deposited. If a call failed and the batch was interrupted, then the
-     * `BatchInterrupted` event is deposited, along with the number of successful calls made
-     * and the error of the failed call. If all were successful, then the `BatchCompleted`
-     * event is deposited.
-     *
-     * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
+     * @param {MelodieRuntimeRuntimeCallLike} call
      **/
-    batch: GenericTxCall<
+    sudo: GenericTxCall<
       Rv,
-      (
-        calls: Array<MelodieRuntimeRuntimeCallLike>,
-      ) => ChainSubmittableExtrinsic<
+      (call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Utility';
+          pallet: 'Sudo';
           palletCall: {
-            name: 'Batch';
-            params: { calls: Array<MelodieRuntimeRuntimeCallLike> };
+            name: 'Sudo';
+            params: { call: MelodieRuntimeRuntimeCallLike };
           };
         }
       >
     >;
 
     /**
-     * Send a call through an indexed pseudonym of the sender.
-     *
-     * Filter from origin are passed along. The call will be dispatched with an origin which
-     * use the same filter as the origin of this call.
-     *
-     * NOTE: If you need to ensure that any account-based filtering is not honored (i.e.
-     * because you expect `proxy` to have been used prior in the call stack and you do not want
-     * the call restrictions to apply to any sub-accounts), then use `as_multi_threshold_1`
-     * in the Multisig pallet instead.
-     *
-     * NOTE: Prior to version *12, this was called `as_limited_sub`.
+     * Authenticates the sudo key and dispatches a function call with `Root` origin.
+     * This function does not check the weight of the call, and instead allows the
+     * Sudo user to specify the weight of the call.
      *
      * The dispatch origin for this call must be _Signed_.
      *
-     * @param {number} index
      * @param {MelodieRuntimeRuntimeCallLike} call
+     * @param {SpWeightsWeightV2Weight} weight
      **/
-    asDerivative: GenericTxCall<
+    sudoUncheckedWeight: GenericTxCall<
       Rv,
       (
-        index: number,
         call: MelodieRuntimeRuntimeCallLike,
+        weight: SpWeightsWeightV2Weight,
       ) => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Utility';
+          pallet: 'Sudo';
           palletCall: {
-            name: 'AsDerivative';
-            params: { index: number; call: MelodieRuntimeRuntimeCallLike };
-          };
-        }
-      >
-    >;
-
-    /**
-     * Send a batch of dispatch calls and atomically execute them.
-     * The whole transaction will rollback and fail if any of the calls failed.
-     *
-     * May be called from any origin except `None`.
-     *
-     * - `calls`: The calls to be dispatched from the same origin. The number of call must not
-     * exceed the constant: `batched_calls_limit` (available in constant metadata).
-     *
-     * If origin is root then the calls are dispatched without checking origin filter. (This
-     * includes bypassing `frame_system::Config::BaseCallFilter`).
-     *
-     * ## Complexity
-     * - O(C) where C is the number of calls to be batched.
-     *
-     * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
-     **/
-    batchAll: GenericTxCall<
-      Rv,
-      (
-        calls: Array<MelodieRuntimeRuntimeCallLike>,
-      ) => ChainSubmittableExtrinsic<
-        Rv,
-        {
-          pallet: 'Utility';
-          palletCall: {
-            name: 'BatchAll';
-            params: { calls: Array<MelodieRuntimeRuntimeCallLike> };
-          };
-        }
-      >
-    >;
-
-    /**
-     * Dispatches a function call with a provided origin.
-     *
-     * The dispatch origin for this call must be _Root_.
-     *
-     * ## Complexity
-     * - O(1).
-     *
-     * @param {MelodieRuntimeOriginCaller} asOrigin
-     * @param {MelodieRuntimeRuntimeCallLike} call
-     **/
-    dispatchAs: GenericTxCall<
-      Rv,
-      (
-        asOrigin: MelodieRuntimeOriginCaller,
-        call: MelodieRuntimeRuntimeCallLike,
-      ) => ChainSubmittableExtrinsic<
-        Rv,
-        {
-          pallet: 'Utility';
-          palletCall: {
-            name: 'DispatchAs';
+            name: 'SudoUncheckedWeight';
             params: {
-              asOrigin: MelodieRuntimeOriginCaller;
+              call: MelodieRuntimeRuntimeCallLike;
+              weight: SpWeightsWeightV2Weight;
+            };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
+     * key.
+     *
+     * @param {MultiAddressLike} new_
+     **/
+    setKey: GenericTxCall<
+      Rv,
+      (new_: MultiAddressLike) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Sudo';
+          palletCall: {
+            name: 'SetKey';
+            params: { new: MultiAddressLike };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Authenticates the sudo key and dispatches a function call with `Signed` origin from
+     * a given account.
+     *
+     * The dispatch origin for this call must be _Signed_.
+     *
+     * @param {MultiAddressLike} who
+     * @param {MelodieRuntimeRuntimeCallLike} call
+     **/
+    sudoAs: GenericTxCall<
+      Rv,
+      (
+        who: MultiAddressLike,
+        call: MelodieRuntimeRuntimeCallLike,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Sudo';
+          palletCall: {
+            name: 'SudoAs';
+            params: {
+              who: MultiAddressLike;
               call: MelodieRuntimeRuntimeCallLike;
             };
           };
@@ -1145,63 +1279,55 @@ export interface ChainTx<Rv extends RpcVersion>
     >;
 
     /**
-     * Send a batch of dispatch calls.
-     * Unlike `batch`, it allows errors and won't interrupt.
+     * Permanently removes the sudo key.
      *
-     * May be called from any origin except `None`.
+     * **This cannot be un-done.**
      *
-     * - `calls`: The calls to be dispatched from the same origin. The number of call must not
-     * exceed the constant: `batched_calls_limit` (available in constant metadata).
-     *
-     * If origin is root then the calls are dispatch without checking origin filter. (This
-     * includes bypassing `frame_system::Config::BaseCallFilter`).
-     *
-     * ## Complexity
-     * - O(C) where C is the number of calls to be batched.
-     *
-     * @param {Array<MelodieRuntimeRuntimeCallLike>} calls
      **/
-    forceBatch: GenericTxCall<
+    removeKey: GenericTxCall<
       Rv,
-      (
-        calls: Array<MelodieRuntimeRuntimeCallLike>,
-      ) => ChainSubmittableExtrinsic<
+      () => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Utility';
+          pallet: 'Sudo';
           palletCall: {
-            name: 'ForceBatch';
-            params: { calls: Array<MelodieRuntimeRuntimeCallLike> };
+            name: 'RemoveKey';
           };
         }
       >
     >;
 
     /**
-     * Dispatch a function call with a specified weight.
-     *
-     * This function does not check the weight of the call, and instead allows the
-     * Root origin to specify the weight of the call.
-     *
-     * The dispatch origin for this call must be _Root_.
-     *
-     * @param {MelodieRuntimeRuntimeCallLike} call
-     * @param {SpWeightsWeightV2Weight} weight
+     * Generic pallet tx call
      **/
-    withWeight: GenericTxCall<
+    [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
+  };
+  /**
+   * Pallet `ImOnline`'s transaction calls
+   **/
+  imOnline: {
+    /**
+     * ## Complexity:
+     * - `O(K)` where K is length of `Keys` (heartbeat.validators_len)
+     * - `O(K)`: decoding of length `K`
+     *
+     * @param {PalletImOnlineHeartbeat} heartbeat
+     * @param {PalletImOnlineSr25519AppSr25519Signature} signature
+     **/
+    heartbeat: GenericTxCall<
       Rv,
       (
-        call: MelodieRuntimeRuntimeCallLike,
-        weight: SpWeightsWeightV2Weight,
+        heartbeat: PalletImOnlineHeartbeat,
+        signature: PalletImOnlineSr25519AppSr25519Signature,
       ) => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Utility';
+          pallet: 'ImOnline';
           palletCall: {
-            name: 'WithWeight';
+            name: 'Heartbeat';
             params: {
-              call: MelodieRuntimeRuntimeCallLike;
-              weight: SpWeightsWeightV2Weight;
+              heartbeat: PalletImOnlineHeartbeat;
+              signature: PalletImOnlineSr25519AppSr25519Signature;
             };
           };
         }
@@ -1254,17 +1380,17 @@ export interface ChainTx<Rv extends RpcVersion>
      *
      * Emits `IdentitySet` if successful.
      *
-     * @param {SharedRuntimeIdentityIdentityInfo} info
+     * @param {PalletIdentityLegacyIdentityInfo} info
      **/
     setIdentity: GenericTxCall<
       Rv,
-      (info: SharedRuntimeIdentityIdentityInfo) => ChainSubmittableExtrinsic<
+      (info: PalletIdentityLegacyIdentityInfo) => ChainSubmittableExtrinsic<
         Rv,
         {
           pallet: 'Identity';
           palletCall: {
             name: 'SetIdentity';
-            params: { info: SharedRuntimeIdentityIdentityInfo };
+            params: { info: PalletIdentityLegacyIdentityInfo };
           };
         }
       >
@@ -1659,8 +1785,9 @@ export interface ChainTx<Rv extends RpcVersion>
     /**
      * Add an `AccountId` with permission to grant usernames with a given `suffix` appended.
      *
-     * The authority can grant up to `allocation` usernames. To top up their allocation, they
-     * should just issue (or request via governance) a new `add_username_authority` call.
+     * The authority can grant up to `allocation` usernames. To top up the allocation or
+     * change the account used to grant usernames, this call can be used with the updated
+     * parameters to overwrite the existing configuration.
      *
      * @param {MultiAddressLike} authority
      * @param {BytesLike} suffix
@@ -1691,17 +1818,21 @@ export interface ChainTx<Rv extends RpcVersion>
     /**
      * Remove `authority` from the username authorities.
      *
+     * @param {BytesLike} suffix
      * @param {MultiAddressLike} authority
      **/
     removeUsernameAuthority: GenericTxCall<
       Rv,
-      (authority: MultiAddressLike) => ChainSubmittableExtrinsic<
+      (
+        suffix: BytesLike,
+        authority: MultiAddressLike,
+      ) => ChainSubmittableExtrinsic<
         Rv,
         {
           pallet: 'Identity';
           palletCall: {
             name: 'RemoveUsernameAuthority';
-            params: { authority: MultiAddressLike };
+            params: { suffix: BytesLike; authority: MultiAddressLike };
           };
         }
       >
@@ -1710,7 +1841,11 @@ export interface ChainTx<Rv extends RpcVersion>
     /**
      * Set the username for `who`. Must be called by a username authority.
      *
-     * The authority must have an `allocation`. Users can either pre-sign their usernames or
+     * If `use_allocation` is set, the authority must have a username allocation available to
+     * spend. Otherwise, the authority will need to put up a deposit for registering the
+     * username.
+     *
+     * Users can either pre-sign their usernames or
      * accept them later.
      *
      * Usernames must:
@@ -1721,6 +1856,7 @@ export interface ChainTx<Rv extends RpcVersion>
      * @param {MultiAddressLike} who
      * @param {BytesLike} username
      * @param {SpRuntimeMultiSignature | undefined} signature
+     * @param {boolean} useAllocation
      **/
     setUsernameFor: GenericTxCall<
       Rv,
@@ -1728,6 +1864,7 @@ export interface ChainTx<Rv extends RpcVersion>
         who: MultiAddressLike,
         username: BytesLike,
         signature: SpRuntimeMultiSignature | undefined,
+        useAllocation: boolean,
       ) => ChainSubmittableExtrinsic<
         Rv,
         {
@@ -1738,6 +1875,7 @@ export interface ChainTx<Rv extends RpcVersion>
               who: MultiAddressLike;
               username: BytesLike;
               signature: SpRuntimeMultiSignature | undefined;
+              useAllocation: boolean;
             };
           };
         }
@@ -1805,19 +1943,60 @@ export interface ChainTx<Rv extends RpcVersion>
     >;
 
     /**
-     * Remove a username that corresponds to an account with no identity. Exists when a user
-     * gets a username but then calls `clear_identity`.
+     * Start the process of removing a username by placing it in the unbinding usernames map.
+     * Once the grace period has passed, the username can be deleted by calling
+     * [remove_username](crate::Call::remove_username).
      *
      * @param {BytesLike} username
      **/
-    removeDanglingUsername: GenericTxCall<
+    unbindUsername: GenericTxCall<
       Rv,
       (username: BytesLike) => ChainSubmittableExtrinsic<
         Rv,
         {
           pallet: 'Identity';
           palletCall: {
-            name: 'RemoveDanglingUsername';
+            name: 'UnbindUsername';
+            params: { username: BytesLike };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Permanently delete a username which has been unbinding for longer than the grace period.
+     * Caller is refunded the fee if the username expired and the removal was successful.
+     *
+     * @param {BytesLike} username
+     **/
+    removeUsername: GenericTxCall<
+      Rv,
+      (username: BytesLike) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Identity';
+          palletCall: {
+            name: 'RemoveUsername';
+            params: { username: BytesLike };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Call with [ForceOrigin](crate::Config::ForceOrigin) privileges which deletes a username
+     * and slashes any deposit associated with it.
+     *
+     * @param {BytesLike} username
+     **/
+    killUsername: GenericTxCall<
+      Rv,
+      (username: BytesLike) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'Identity';
+          palletCall: {
+            name: 'KillUsername';
             params: { username: BytesLike };
           };
         }
@@ -2125,121 +2304,114 @@ export interface ChainTx<Rv extends RpcVersion>
     [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
   };
   /**
-   * Pallet `Sudo`'s transaction calls
+   * Pallet `Preimage`'s transaction calls
    **/
-  sudo: {
+  preimage: {
     /**
-     * Authenticates the sudo key and dispatches a function call with `Root` origin.
+     * Register a preimage on-chain.
      *
-     * @param {MelodieRuntimeRuntimeCallLike} call
+     * If the preimage was previously requested, no fees or deposits are taken for providing
+     * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
+     *
+     * @param {BytesLike} bytes
      **/
-    sudo: GenericTxCall<
+    notePreimage: GenericTxCall<
       Rv,
-      (call: MelodieRuntimeRuntimeCallLike) => ChainSubmittableExtrinsic<
+      (bytes: BytesLike) => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Sudo';
+          pallet: 'Preimage';
           palletCall: {
-            name: 'Sudo';
-            params: { call: MelodieRuntimeRuntimeCallLike };
+            name: 'NotePreimage';
+            params: { bytes: BytesLike };
           };
         }
       >
     >;
 
     /**
-     * Authenticates the sudo key and dispatches a function call with `Root` origin.
-     * This function does not check the weight of the call, and instead allows the
-     * Sudo user to specify the weight of the call.
+     * Clear an unrequested preimage from the runtime storage.
      *
-     * The dispatch origin for this call must be _Signed_.
+     * If `len` is provided, then it will be a much cheaper operation.
      *
-     * @param {MelodieRuntimeRuntimeCallLike} call
-     * @param {SpWeightsWeightV2Weight} weight
+     * - `hash`: The hash of the preimage to be removed from the store.
+     * - `len`: The length of the preimage of `hash`.
+     *
+     * @param {H256} hash
      **/
-    sudoUncheckedWeight: GenericTxCall<
+    unnotePreimage: GenericTxCall<
       Rv,
-      (
-        call: MelodieRuntimeRuntimeCallLike,
-        weight: SpWeightsWeightV2Weight,
-      ) => ChainSubmittableExtrinsic<
+      (hash: H256) => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Sudo';
+          pallet: 'Preimage';
           palletCall: {
-            name: 'SudoUncheckedWeight';
-            params: {
-              call: MelodieRuntimeRuntimeCallLike;
-              weight: SpWeightsWeightV2Weight;
-            };
+            name: 'UnnotePreimage';
+            params: { hash: H256 };
           };
         }
       >
     >;
 
     /**
-     * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
-     * key.
+     * Request a preimage be uploaded to the chain without paying any fees or deposits.
      *
-     * @param {MultiAddressLike} new_
+     * If the preimage requests has already been provided on-chain, we unreserve any deposit
+     * a user may have paid, and take the control of the preimage out of their hands.
+     *
+     * @param {H256} hash
      **/
-    setKey: GenericTxCall<
+    requestPreimage: GenericTxCall<
       Rv,
-      (new_: MultiAddressLike) => ChainSubmittableExtrinsic<
+      (hash: H256) => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Sudo';
+          pallet: 'Preimage';
           palletCall: {
-            name: 'SetKey';
-            params: { new: MultiAddressLike };
+            name: 'RequestPreimage';
+            params: { hash: H256 };
           };
         }
       >
     >;
 
     /**
-     * Authenticates the sudo key and dispatches a function call with `Signed` origin from
-     * a given account.
+     * Clear a previously made request for a preimage.
      *
-     * The dispatch origin for this call must be _Signed_.
+     * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
      *
-     * @param {MultiAddressLike} who
-     * @param {MelodieRuntimeRuntimeCallLike} call
+     * @param {H256} hash
      **/
-    sudoAs: GenericTxCall<
+    unrequestPreimage: GenericTxCall<
       Rv,
-      (
-        who: MultiAddressLike,
-        call: MelodieRuntimeRuntimeCallLike,
-      ) => ChainSubmittableExtrinsic<
+      (hash: H256) => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Sudo';
+          pallet: 'Preimage';
           palletCall: {
-            name: 'SudoAs';
-            params: {
-              who: MultiAddressLike;
-              call: MelodieRuntimeRuntimeCallLike;
-            };
+            name: 'UnrequestPreimage';
+            params: { hash: H256 };
           };
         }
       >
     >;
 
     /**
-     * Permanently removes the sudo key.
+     * Ensure that the a bulk of pre-images is upgraded.
      *
-     * **This cannot be un-done.**
+     * The caller pays no fee if at least 90% of pre-images were successfully updated.
      *
+     * @param {Array<H256>} hashes
      **/
-    removeKey: GenericTxCall<
+    ensureUpdated: GenericTxCall<
       Rv,
-      () => ChainSubmittableExtrinsic<
+      (hashes: Array<H256>) => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Sudo';
+          pallet: 'Preimage';
           palletCall: {
-            name: 'RemoveKey';
+            name: 'EnsureUpdated';
+            params: { hashes: Array<H256> };
           };
         }
       >
@@ -2865,114 +3037,220 @@ export interface ChainTx<Rv extends RpcVersion>
     [callName: string]: GenericTxCall<Rv, TxCall<Rv>>;
   };
   /**
-   * Pallet `Preimage`'s transaction calls
+   * Pallet `SafeMode`'s transaction calls
    **/
-  preimage: {
+  safeMode: {
     /**
-     * Register a preimage on-chain.
+     * Enter safe-mode permissionlessly for [`Config::EnterDuration`] blocks.
      *
-     * If the preimage was previously requested, no fees or deposits are taken for providing
-     * the preimage. Otherwise, a deposit is taken proportional to the size of the preimage.
+     * Reserves [`Config::EnterDepositAmount`] from the caller's account.
+     * Emits an [`Event::Entered`] event on success.
+     * Errors with [`Error::Entered`] if the safe-mode is already entered.
+     * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
      *
-     * @param {BytesLike} bytes
      **/
-    notePreimage: GenericTxCall<
+    enter: GenericTxCall<
       Rv,
-      (bytes: BytesLike) => ChainSubmittableExtrinsic<
+      () => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Preimage';
+          pallet: 'SafeMode';
           palletCall: {
-            name: 'NotePreimage';
-            params: { bytes: BytesLike };
+            name: 'Enter';
           };
         }
       >
     >;
 
     /**
-     * Clear an unrequested preimage from the runtime storage.
+     * Enter safe-mode by force for a per-origin configured number of blocks.
      *
-     * If `len` is provided, then it will be a much cheaper operation.
+     * Emits an [`Event::Entered`] event on success.
+     * Errors with [`Error::Entered`] if the safe-mode is already entered.
      *
-     * - `hash`: The hash of the preimage to be removed from the store.
-     * - `len`: The length of the preimage of `hash`.
+     * Can only be called by the [`Config::ForceEnterOrigin`] origin.
      *
-     * @param {H256} hash
      **/
-    unnotePreimage: GenericTxCall<
+    forceEnter: GenericTxCall<
       Rv,
-      (hash: H256) => ChainSubmittableExtrinsic<
+      () => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Preimage';
+          pallet: 'SafeMode';
           palletCall: {
-            name: 'UnnotePreimage';
-            params: { hash: H256 };
+            name: 'ForceEnter';
           };
         }
       >
     >;
 
     /**
-     * Request a preimage be uploaded to the chain without paying any fees or deposits.
+     * Extend the safe-mode permissionlessly for [`Config::ExtendDuration`] blocks.
      *
-     * If the preimage requests has already been provided on-chain, we unreserve any deposit
-     * a user may have paid, and take the control of the preimage out of their hands.
+     * This accumulates on top of the current remaining duration.
+     * Reserves [`Config::ExtendDepositAmount`] from the caller's account.
+     * Emits an [`Event::Extended`] event on success.
+     * Errors with [`Error::Exited`] if the safe-mode is entered.
+     * Errors with [`Error::NotConfigured`] if the deposit amount is `None`.
      *
-     * @param {H256} hash
+     * This may be called by any signed origin with [`Config::ExtendDepositAmount`] free
+     * currency to reserve. This call can be disabled for all origins by configuring
+     * [`Config::ExtendDepositAmount`] to `None`.
+     *
      **/
-    requestPreimage: GenericTxCall<
+    extend: GenericTxCall<
       Rv,
-      (hash: H256) => ChainSubmittableExtrinsic<
+      () => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Preimage';
+          pallet: 'SafeMode';
           palletCall: {
-            name: 'RequestPreimage';
-            params: { hash: H256 };
+            name: 'Extend';
           };
         }
       >
     >;
 
     /**
-     * Clear a previously made request for a preimage.
+     * Extend the safe-mode by force for a per-origin configured number of blocks.
      *
-     * NOTE: THIS MUST NOT BE CALLED ON `hash` MORE TIMES THAN `request_preimage`.
+     * Emits an [`Event::Extended`] event on success.
+     * Errors with [`Error::Exited`] if the safe-mode is inactive.
      *
-     * @param {H256} hash
+     * Can only be called by the [`Config::ForceExtendOrigin`] origin.
+     *
      **/
-    unrequestPreimage: GenericTxCall<
+    forceExtend: GenericTxCall<
       Rv,
-      (hash: H256) => ChainSubmittableExtrinsic<
+      () => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Preimage';
+          pallet: 'SafeMode';
           palletCall: {
-            name: 'UnrequestPreimage';
-            params: { hash: H256 };
+            name: 'ForceExtend';
           };
         }
       >
     >;
 
     /**
-     * Ensure that the a bulk of pre-images is upgraded.
+     * Exit safe-mode by force.
      *
-     * The caller pays no fee if at least 90% of pre-images were successfully updated.
+     * Emits an [`Event::Exited`] with [`ExitReason::Force`] event on success.
+     * Errors with [`Error::Exited`] if the safe-mode is inactive.
      *
-     * @param {Array<H256>} hashes
+     * Note: `safe-mode` will be automatically deactivated by [`Pallet::on_initialize`] hook
+     * after the block height is greater than the [`EnteredUntil`] storage item.
+     * Emits an [`Event::Exited`] with [`ExitReason::Timeout`] event when deactivated in the
+     * hook.
+     *
      **/
-    ensureUpdated: GenericTxCall<
+    forceExit: GenericTxCall<
       Rv,
-      (hashes: Array<H256>) => ChainSubmittableExtrinsic<
+      () => ChainSubmittableExtrinsic<
         Rv,
         {
-          pallet: 'Preimage';
+          pallet: 'SafeMode';
           palletCall: {
-            name: 'EnsureUpdated';
-            params: { hashes: Array<H256> };
+            name: 'ForceExit';
+          };
+        }
+      >
+    >;
+
+    /**
+     * Slash a deposit for an account that entered or extended safe-mode at a given
+     * historical block.
+     *
+     * This can only be called while safe-mode is entered.
+     *
+     * Emits a [`Event::DepositSlashed`] event on success.
+     * Errors with [`Error::Entered`] if safe-mode is entered.
+     *
+     * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+     *
+     * @param {AccountId32Like} account
+     * @param {number} block
+     **/
+    forceSlashDeposit: GenericTxCall<
+      Rv,
+      (
+        account: AccountId32Like,
+        block: number,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'SafeMode';
+          palletCall: {
+            name: 'ForceSlashDeposit';
+            params: { account: AccountId32Like; block: number };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Permissionlessly release a deposit for an account that entered safe-mode at a
+     * given historical block.
+     *
+     * The call can be completely disabled by setting [`Config::ReleaseDelay`] to `None`.
+     * This cannot be called while safe-mode is entered and not until
+     * [`Config::ReleaseDelay`] blocks have passed since safe-mode was entered.
+     *
+     * Emits a [`Event::DepositReleased`] event on success.
+     * Errors with [`Error::Entered`] if the safe-mode is entered.
+     * Errors with [`Error::CannotReleaseYet`] if [`Config::ReleaseDelay`] block have not
+     * passed since safe-mode was entered. Errors with [`Error::NoDeposit`] if the payee has no
+     * reserved currency at the block specified.
+     *
+     * @param {AccountId32Like} account
+     * @param {number} block
+     **/
+    releaseDeposit: GenericTxCall<
+      Rv,
+      (
+        account: AccountId32Like,
+        block: number,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'SafeMode';
+          palletCall: {
+            name: 'ReleaseDeposit';
+            params: { account: AccountId32Like; block: number };
+          };
+        }
+      >
+    >;
+
+    /**
+     * Force to release a deposit for an account that entered safe-mode at a given
+     * historical block.
+     *
+     * This can be called while safe-mode is still entered.
+     *
+     * Emits a [`Event::DepositReleased`] event on success.
+     * Errors with [`Error::Entered`] if safe-mode is entered.
+     * Errors with [`Error::NoDeposit`] if the payee has no reserved currency at the
+     * specified block.
+     *
+     * Can only be called by the [`Config::ForceDepositOrigin`] origin.
+     *
+     * @param {AccountId32Like} account
+     * @param {number} block
+     **/
+    forceReleaseDeposit: GenericTxCall<
+      Rv,
+      (
+        account: AccountId32Like,
+        block: number,
+      ) => ChainSubmittableExtrinsic<
+        Rv,
+        {
+          pallet: 'SafeMode';
+          palletCall: {
+            name: 'ForceReleaseDeposit';
+            params: { account: AccountId32Like; block: number };
           };
         }
       >
@@ -3059,17 +3337,17 @@ export interface ChainTx<Rv extends RpcVersion>
   musicalWorks: {
     /**
      *
-     * @param {MiddsSongSong} midds
+     * @param {MiddsMusicalWorkMusicalWork} midds
      **/
     register: GenericTxCall<
       Rv,
-      (midds: MiddsSongSong) => ChainSubmittableExtrinsic<
+      (midds: MiddsMusicalWorkMusicalWork) => ChainSubmittableExtrinsic<
         Rv,
         {
           pallet: 'MusicalWorks';
           palletCall: {
             name: 'Register';
-            params: { midds: MiddsSongSong };
+            params: { midds: MiddsMusicalWorkMusicalWork };
           };
         }
       >
@@ -3078,20 +3356,23 @@ export interface ChainTx<Rv extends RpcVersion>
     /**
      *
      * @param {H256} middsId
-     * @param {MiddsSongSongEditableField} fieldData
+     * @param {MiddsMusicalWorkMusicalWorkEditableField} fieldData
      **/
     updateField: GenericTxCall<
       Rv,
       (
         middsId: H256,
-        fieldData: MiddsSongSongEditableField,
+        fieldData: MiddsMusicalWorkMusicalWorkEditableField,
       ) => ChainSubmittableExtrinsic<
         Rv,
         {
           pallet: 'MusicalWorks';
           palletCall: {
             name: 'UpdateField';
-            params: { middsId: H256; fieldData: MiddsSongSongEditableField };
+            params: {
+              middsId: H256;
+              fieldData: MiddsMusicalWorkMusicalWorkEditableField;
+            };
           };
         }
       >

@@ -13,7 +13,8 @@
     "prepublishOnly": "bun run build",
     "lint": "eslint 'src/**/*.ts'",
     "test": "jest",
-    "generate-chaintypes-from-devnet": "dedot chaintypes -w ws://127.0.0.1:9944 -o ./src/interfaces/ -c allfeat"
+    "generate-chaintypes-from-devnet": "dedot chaintypes -w ws://127.0.0.1:9944 -o ./src/interfaces/ -c allfeat",
+    "generate-chaintypes-from-melodie": "dedot chaintypes -w wss://melodie-rpc.allfeat.io -o ./src/interfaces/ -c allfeat"
   },
   "repository": {
     "type": "git",

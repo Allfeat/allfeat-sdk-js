@@ -62,7 +62,6 @@ export type ChainJsonRpcApis<Rv extends RpcVersion> = Pick<
   | 'state_subscribeRuntimeVersion'
   | 'state_subscribeStorage'
   | 'state_traceBlock'
-  | 'sync_state_genSyncSpec'
   | 'system_accountNextIndex'
   | 'system_addLogFilter'
   | 'system_addReservedPeer'

@@ -77,6 +77,49 @@ export interface ChainErrors<Rv extends RpcVersion>
     [error: string]: GenericPalletError<Rv>;
   };
   /**
+   * Pallet `Utility`'s errors
+   **/
+  utility: {
+    /**
+     * Too many calls batched.
+     **/
+    TooManyCalls: GenericPalletError<Rv>;
+
+    /**
+     * Generic pallet error
+     **/
+    [error: string]: GenericPalletError<Rv>;
+  };
+  /**
+   * Pallet `Babe`'s errors
+   **/
+  babe: {
+    /**
+     * An equivocation proof provided as part of an equivocation report is invalid.
+     **/
+    InvalidEquivocationProof: GenericPalletError<Rv>;
+
+    /**
+     * A key ownership proof provided as part of an equivocation report is invalid.
+     **/
+    InvalidKeyOwnershipProof: GenericPalletError<Rv>;
+
+    /**
+     * A given equivocation report is valid but already previously reported.
+     **/
+    DuplicateOffenceReport: GenericPalletError<Rv>;
+
+    /**
+     * Submitted configuration is invalid.
+     **/
+    InvalidConfiguration: GenericPalletError<Rv>;
+
+    /**
+     * Generic pallet error
+     **/
+    [error: string]: GenericPalletError<Rv>;
+  };
+  /**
    * Pallet `Balances`'s errors
    **/
   balances: {
@@ -139,54 +182,6 @@ export interface ChainErrors<Rv extends RpcVersion>
      * The delta cannot be zero.
      **/
     DeltaZero: GenericPalletError<Rv>;
-
-    /**
-     * Generic pallet error
-     **/
-    [error: string]: GenericPalletError<Rv>;
-  };
-  /**
-   * Pallet `Babe`'s errors
-   **/
-  babe: {
-    /**
-     * An equivocation proof provided as part of an equivocation report is invalid.
-     **/
-    InvalidEquivocationProof: GenericPalletError<Rv>;
-
-    /**
-     * A key ownership proof provided as part of an equivocation report is invalid.
-     **/
-    InvalidKeyOwnershipProof: GenericPalletError<Rv>;
-
-    /**
-     * A given equivocation report is valid but already previously reported.
-     **/
-    DuplicateOffenceReport: GenericPalletError<Rv>;
-
-    /**
-     * Submitted configuration is invalid.
-     **/
-    InvalidConfiguration: GenericPalletError<Rv>;
-
-    /**
-     * Generic pallet error
-     **/
-    [error: string]: GenericPalletError<Rv>;
-  };
-  /**
-   * Pallet `ImOnline`'s errors
-   **/
-  imOnline: {
-    /**
-     * Non existent public key.
-     **/
-    InvalidKey: GenericPalletError<Rv>;
-
-    /**
-     * Duplicated heartbeat.
-     **/
-    DuplicatedHeartbeat: GenericPalletError<Rv>;
 
     /**
      * Generic pallet error
@@ -293,13 +288,32 @@ export interface ChainErrors<Rv extends RpcVersion>
     [error: string]: GenericPalletError<Rv>;
   };
   /**
-   * Pallet `Utility`'s errors
+   * Pallet `Sudo`'s errors
    **/
-  utility: {
+  sudo: {
     /**
-     * Too many calls batched.
+     * Sender must be the Sudo account.
      **/
-    TooManyCalls: GenericPalletError<Rv>;
+    RequireSudo: GenericPalletError<Rv>;
+
+    /**
+     * Generic pallet error
+     **/
+    [error: string]: GenericPalletError<Rv>;
+  };
+  /**
+   * Pallet `ImOnline`'s errors
+   **/
+  imOnline: {
+    /**
+     * Non existent public key.
+     **/
+    InvalidKey: GenericPalletError<Rv>;
+
+    /**
+     * Duplicated heartbeat.
+     **/
+    DuplicatedHeartbeat: GenericPalletError<Rv>;
 
     /**
      * Generic pallet error
@@ -441,6 +455,27 @@ export interface ChainErrors<Rv extends RpcVersion>
     NotExpired: GenericPalletError<Rv>;
 
     /**
+     * The username cannot be removed because it's still in the grace period.
+     **/
+    TooEarly: GenericPalletError<Rv>;
+
+    /**
+     * The username cannot be removed because it is not unbinding.
+     **/
+    NotUnbinding: GenericPalletError<Rv>;
+
+    /**
+     * The username cannot be unbound because it is already unbinding.
+     **/
+    AlreadyUnbinding: GenericPalletError<Rv>;
+
+    /**
+     * The action cannot be performed because of insufficient privileges (e.g. authority
+     * trying to unbind a username provided by the system).
+     **/
+    InsufficientPrivileges: GenericPalletError<Rv>;
+
+    /**
      * Generic pallet error
      **/
     [error: string]: GenericPalletError<Rv>;
@@ -480,13 +515,48 @@ export interface ChainErrors<Rv extends RpcVersion>
     [error: string]: GenericPalletError<Rv>;
   };
   /**
-   * Pallet `Sudo`'s errors
+   * Pallet `Preimage`'s errors
    **/
-  sudo: {
+  preimage: {
     /**
-     * Sender must be the Sudo account.
+     * Preimage is too large to store on-chain.
      **/
-    RequireSudo: GenericPalletError<Rv>;
+    TooBig: GenericPalletError<Rv>;
+
+    /**
+     * Preimage has already been noted on-chain.
+     **/
+    AlreadyNoted: GenericPalletError<Rv>;
+
+    /**
+     * The user is not authorized to perform this action.
+     **/
+    NotAuthorized: GenericPalletError<Rv>;
+
+    /**
+     * The preimage cannot be removed since it has not yet been noted.
+     **/
+    NotNoted: GenericPalletError<Rv>;
+
+    /**
+     * A preimage may not be removed when there are outstanding requests.
+     **/
+    Requested: GenericPalletError<Rv>;
+
+    /**
+     * The preimage request cannot be removed since no outstanding requests exist.
+     **/
+    NotRequested: GenericPalletError<Rv>;
+
+    /**
+     * More than `MAX_HASH_UPGRADE_BULK_COUNT` hashes were requested to be upgraded at once.
+     **/
+    TooMany: GenericPalletError<Rv>;
+
+    /**
+     * Too few hashes were requested to be upgraded (i.e. zero).
+     **/
+    TooFew: GenericPalletError<Rv>;
 
     /**
      * Generic pallet error
@@ -622,48 +692,43 @@ export interface ChainErrors<Rv extends RpcVersion>
     [error: string]: GenericPalletError<Rv>;
   };
   /**
-   * Pallet `Preimage`'s errors
+   * Pallet `SafeMode`'s errors
    **/
-  preimage: {
+  safeMode: {
     /**
-     * Preimage is too large to store on-chain.
+     * The safe-mode is (already or still) entered.
      **/
-    TooBig: GenericPalletError<Rv>;
+    Entered: GenericPalletError<Rv>;
 
     /**
-     * Preimage has already been noted on-chain.
+     * The safe-mode is (already or still) exited.
      **/
-    AlreadyNoted: GenericPalletError<Rv>;
+    Exited: GenericPalletError<Rv>;
 
     /**
-     * The user is not authorized to perform this action.
+     * This functionality of the pallet is disabled by the configuration.
      **/
-    NotAuthorized: GenericPalletError<Rv>;
+    NotConfigured: GenericPalletError<Rv>;
 
     /**
-     * The preimage cannot be removed since it has not yet been noted.
+     * There is no balance reserved.
      **/
-    NotNoted: GenericPalletError<Rv>;
+    NoDeposit: GenericPalletError<Rv>;
 
     /**
-     * A preimage may not be removed when there are outstanding requests.
+     * The account already has a deposit reserved and can therefore not enter or extend again.
      **/
-    Requested: GenericPalletError<Rv>;
+    AlreadyDeposited: GenericPalletError<Rv>;
 
     /**
-     * The preimage request cannot be removed since no outstanding requests exist.
+     * This deposit cannot be released yet.
      **/
-    NotRequested: GenericPalletError<Rv>;
+    CannotReleaseYet: GenericPalletError<Rv>;
 
     /**
-     * More than `MAX_HASH_UPGRADE_BULK_COUNT` hashes were requested to be upgraded at once.
+     * An error from the underlying `Currency`.
      **/
-    TooMany: GenericPalletError<Rv>;
-
-    /**
-     * Too few hashes were requested to be upgraded (i.e. zero).
-     **/
-    TooFew: GenericPalletError<Rv>;
+    CurrencyError: GenericPalletError<Rv>;
 
     /**
      * Generic pallet error
@@ -683,6 +748,11 @@ export interface ChainErrors<Rv extends RpcVersion>
      * The specified MIDDS ID is not related to any pending MIDDS.
      **/
     PendingMiddsNotFound: GenericPalletError<Rv>;
+
+    /**
+     * Some data in the MIDDS aren't valid.
+     **/
+    UnvalidMiddsData: GenericPalletError<Rv>;
 
     /**
      * The lock-unregister period is still going.
@@ -705,7 +775,8 @@ export interface ChainErrors<Rv extends RpcVersion>
     CantHoldFunds: GenericPalletError<Rv>;
 
     /**
-     * The provider tried to register/update a MIDDS that exceed data size cost maximum authorized.
+     * The provider tried to register/update a MIDDS that exceed data size cost maximum
+     * authorized.
      **/
     OverflowedAuthorizedDataCost: GenericPalletError<Rv>;
 
@@ -729,6 +800,11 @@ export interface ChainErrors<Rv extends RpcVersion>
     PendingMiddsNotFound: GenericPalletError<Rv>;
 
     /**
+     * Some data in the MIDDS aren't valid.
+     **/
+    UnvalidMiddsData: GenericPalletError<Rv>;
+
+    /**
      * The lock-unregister period is still going.
      **/
     UnregisterLocked: GenericPalletError<Rv>;
@@ -749,7 +825,8 @@ export interface ChainErrors<Rv extends RpcVersion>
     CantHoldFunds: GenericPalletError<Rv>;
 
     /**
-     * The provider tried to register/update a MIDDS that exceed data size cost maximum authorized.
+     * The provider tried to register/update a MIDDS that exceed data size cost maximum
+     * authorized.
      **/
     OverflowedAuthorizedDataCost: GenericPalletError<Rv>;
 

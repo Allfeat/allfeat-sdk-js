@@ -56,40 +56,13 @@ export interface ChainConsts<Rv extends RpcVersion>
     [name: string]: any;
   };
   /**
-   * Pallet `Balances`'s constants
+   * Pallet `Utility`'s constants
    **/
-  balances: {
+  utility: {
     /**
-     * The minimum amount required to keep an account open. MUST BE GREATER THAN ZERO!
-     *
-     * If you *really* need it to be zero, you can enable the feature `insecure_zero_ed` for
-     * this pallet. However, you do so at your own risk: this will open up a major DoS vector.
-     * In case you have multiple sources of provider references, you may also get unexpected
-     * behaviour if you set this to zero.
-     *
-     * Bottom line: Do yourself a favour and make it at least one!
+     * The limit on the number of batched calls.
      **/
-    existentialDeposit: bigint;
-
-    /**
-     * The maximum number of locks that should exist on an account.
-     * Not strictly enforced, but used for weight estimation.
-     *
-     * Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
-     **/
-    maxLocks: number;
-
-    /**
-     * The maximum number of named reserves that can exist on an account.
-     *
-     * Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
-     **/
-    maxReserves: number;
-
-    /**
-     * The maximum number of individual freeze locks that can exist on an account at any time.
-     **/
-    maxFreezes: number;
+    batchedCallsLimit: number;
 
     /**
      * Generic pallet constant
@@ -151,16 +124,49 @@ export interface ChainConsts<Rv extends RpcVersion>
     [name: string]: any;
   };
   /**
-   * Pallet `ImOnline`'s constants
+   * Pallet `Authorship`'s constants
    **/
-  imOnline: {
+  authorship: {
     /**
-     * A configuration for base priority of unsigned transactions.
-     *
-     * This is exposed so that it can be tuned for particular runtime, when
-     * multiple pallets send unsigned transactions.
+     * Generic pallet constant
      **/
-    unsignedPriority: bigint;
+    [name: string]: any;
+  };
+  /**
+   * Pallet `Balances`'s constants
+   **/
+  balances: {
+    /**
+     * The minimum amount required to keep an account open. MUST BE GREATER THAN ZERO!
+     *
+     * If you *really* need it to be zero, you can enable the feature `insecure_zero_ed` for
+     * this pallet. However, you do so at your own risk: this will open up a major DoS vector.
+     * In case you have multiple sources of provider references, you may also get unexpected
+     * behaviour if you set this to zero.
+     *
+     * Bottom line: Do yourself a favour and make it at least one!
+     **/
+    existentialDeposit: bigint;
+
+    /**
+     * The maximum number of locks that should exist on an account.
+     * Not strictly enforced, but used for weight estimation.
+     *
+     * Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
+     **/
+    maxLocks: number;
+
+    /**
+     * The maximum number of named reserves that can exist on an account.
+     *
+     * Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
+     **/
+    maxReserves: number;
+
+    /**
+     * The maximum number of individual freeze locks that can exist on an account at any time.
+     **/
+    maxFreezes: number;
 
     /**
      * Generic pallet constant
@@ -168,9 +174,34 @@ export interface ChainConsts<Rv extends RpcVersion>
     [name: string]: any;
   };
   /**
-   * Pallet `Authorship`'s constants
+   * Pallet `TransactionPayment`'s constants
    **/
-  authorship: {
+  transactionPayment: {
+    /**
+     * A fee multiplier for `Operational` extrinsics to compute "virtual tip" to boost their
+     * `priority`
+     *
+     * This value is multiplied by the `final_fee` to obtain a "virtual tip" that is later
+     * added to a tip component in regular `priority` calculations.
+     * It means that a `Normal` transaction can front-run a similarly-sized `Operational`
+     * extrinsic (with no tip), by including a tip value greater than the virtual tip.
+     *
+     * ```rust,ignore
+     * // For `Normal`
+     * let priority = priority_calc(tip);
+     *
+     * // For `Operational`
+     * let virtual_tip = (inclusion_fee + tip) * OperationalFeeMultiplier;
+     * let priority = priority_calc(tip + virtual_tip);
+     * ```
+     *
+     * Note that since we use `final_fee` the multiplier applies also to the regular `tip`
+     * sent with the transaction. So, not only does the transaction get a priority bump based
+     * on the `inclusion_fee`, but we also amplify the impact of tips applied to `Operational`
+     * transactions.
+     **/
+    operationalFeeMultiplier: number;
+
     /**
      * Generic pallet constant
      **/
@@ -224,6 +255,32 @@ export interface ChainConsts<Rv extends RpcVersion>
     [name: string]: any;
   };
   /**
+   * Pallet `Sudo`'s constants
+   **/
+  sudo: {
+    /**
+     * Generic pallet constant
+     **/
+    [name: string]: any;
+  };
+  /**
+   * Pallet `ImOnline`'s constants
+   **/
+  imOnline: {
+    /**
+     * A configuration for base priority of unsigned transactions.
+     *
+     * This is exposed so that it can be tuned for particular runtime, when
+     * multiple pallets send unsigned transactions.
+     **/
+    unsignedPriority: bigint;
+
+    /**
+     * Generic pallet constant
+     **/
+    [name: string]: any;
+  };
+  /**
    * Pallet `AuthorityDiscovery`'s constants
    **/
   authorityDiscovery: {
@@ -233,14 +290,9 @@ export interface ChainConsts<Rv extends RpcVersion>
     [name: string]: any;
   };
   /**
-   * Pallet `Utility`'s constants
+   * Pallet `Historical`'s constants
    **/
-  utility: {
-    /**
-     * The limit on the number of batched calls.
-     **/
-    batchedCallsLimit: number;
-
+  historical: {
     /**
      * Generic pallet constant
      **/
@@ -259,6 +311,12 @@ export interface ChainConsts<Rv extends RpcVersion>
      * The amount held on deposit per encoded byte for a registered identity.
      **/
     byteDeposit: bigint;
+
+    /**
+     * The amount held on deposit per registered username. This value should change only in
+     * runtime upgrades with proper migration of existing deposits.
+     **/
+    usernameDeposit: bigint;
 
     /**
      * The amount held on deposit for a registered subaccount. This should account for the fact
@@ -282,6 +340,12 @@ export interface ChainConsts<Rv extends RpcVersion>
      * The number of blocks within which a username grant must be accepted.
      **/
     pendingUsernameExpiration: number;
+
+    /**
+     * The number of blocks that must pass to enable the permanent deletion of a username by
+     * its respective authority.
+     **/
+    usernameGracePeriod: number;
 
     /**
      * The maximum length of a suffix.
@@ -322,9 +386,9 @@ export interface ChainConsts<Rv extends RpcVersion>
     [name: string]: any;
   };
   /**
-   * Pallet `Sudo`'s constants
+   * Pallet `Preimage`'s constants
    **/
-  sudo: {
+  preimage: {
     /**
      * Generic pallet constant
      **/
@@ -414,33 +478,46 @@ export interface ChainConsts<Rv extends RpcVersion>
     [name: string]: any;
   };
   /**
-   * Pallet `TransactionPayment`'s constants
+   * Pallet `SafeMode`'s constants
    **/
-  transactionPayment: {
+  safeMode: {
     /**
-     * A fee multiplier for `Operational` extrinsics to compute "virtual tip" to boost their
-     * `priority`
-     *
-     * This value is multiplied by the `final_fee` to obtain a "virtual tip" that is later
-     * added to a tip component in regular `priority` calculations.
-     * It means that a `Normal` transaction can front-run a similarly-sized `Operational`
-     * extrinsic (with no tip), by including a tip value greater than the virtual tip.
-     *
-     * ```rust,ignore
-     * // For `Normal`
-     * let priority = priority_calc(tip);
-     *
-     * // For `Operational`
-     * let virtual_tip = (inclusion_fee + tip) * OperationalFeeMultiplier;
-     * let priority = priority_calc(tip + virtual_tip);
-     * ```
-     *
-     * Note that since we use `final_fee` the multiplier applies also to the regular `tip`
-     * sent with the transaction. So, not only does the transaction get a priority bump based
-     * on the `inclusion_fee`, but we also amplify the impact of tips applied to `Operational`
-     * transactions.
+     * For how many blocks the safe-mode will be entered by [`Pallet::enter`].
      **/
-    operationalFeeMultiplier: number;
+    enterDuration: number;
+
+    /**
+     * For how many blocks the safe-mode can be extended by each [`Pallet::extend`] call.
+     *
+     * This does not impose a hard limit as the safe-mode can be extended multiple times.
+     **/
+    extendDuration: number;
+
+    /**
+     * The amount that will be reserved upon calling [`Pallet::enter`].
+     *
+     * `None` disallows permissionlessly enabling the safe-mode and is a sane default.
+     **/
+    enterDepositAmount: bigint | undefined;
+
+    /**
+     * The amount that will be reserved upon calling [`Pallet::extend`].
+     *
+     * `None` disallows permissionlessly extending the safe-mode and is a sane default.
+     **/
+    extendDepositAmount: bigint | undefined;
+
+    /**
+     * The minimal duration a deposit will remain reserved after safe-mode is entered or
+     * extended, unless [`Pallet::force_release_deposit`] is successfully called sooner.
+     *
+     * Every deposit is tied to a specific activation or extension, thus each deposit can be
+     * released independently after the delay for it has passed.
+     *
+     * `None` disallows permissionlessly releasing the safe-mode deposits and is a sane
+     * default.
+     **/
+    releaseDelay: number | undefined;
 
     /**
      * Generic pallet constant
@@ -448,18 +525,9 @@ export interface ChainConsts<Rv extends RpcVersion>
     [name: string]: any;
   };
   /**
-   * Pallet `Historical`'s constants
+   * Pallet `Mmr`'s constants
    **/
-  historical: {
-    /**
-     * Generic pallet constant
-     **/
-    [name: string]: any;
-  };
-  /**
-   * Pallet `Preimage`'s constants
-   **/
-  preimage: {
+  mmr: {
     /**
      * Generic pallet constant
      **/
@@ -489,7 +557,7 @@ export interface ChainConsts<Rv extends RpcVersion>
     /**
      * How many time the depositor have to wait to remove the MIDDS.
      **/
-    unregisterPeriod: number;
+    unregisterPeriod: bigint | undefined;
 
     /**
      * Generic pallet constant
@@ -520,17 +588,8 @@ export interface ChainConsts<Rv extends RpcVersion>
     /**
      * How many time the depositor have to wait to remove the MIDDS.
      **/
-    unregisterPeriod: number;
+    unregisterPeriod: bigint | undefined;
 
-    /**
-     * Generic pallet constant
-     **/
-    [name: string]: any;
-  };
-  /**
-   * Pallet `Mmr`'s constants
-   **/
-  mmr: {
     /**
      * Generic pallet constant
      **/
