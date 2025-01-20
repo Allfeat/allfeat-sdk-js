@@ -8,7 +8,7 @@ import {
 } from '../interfaces/allfeat';
 import { Midds } from './midds';
 
-interface MusicalWorkInput {
+export interface MusicalWorkInputs {
   [key: string]: IMiddsInput<any, any>;
   iswc: ISWC
   title: MusicalWorkTitle
@@ -17,9 +17,9 @@ interface MusicalWorkInput {
   shares: Shares
 }
 
-export class MusicalWork extends Midds<MusicalWorkInput> {
+export class MusicalWork extends Midds<MusicalWorkInputs> {
   constructor() {
-    const inputs: MusicalWorkInput = {
+    const inputs: MusicalWorkInputs = {
       iswc: new ISWC(),
       title: new MusicalWorkTitle(),
       duration: new MusicalWorkDuration(),
