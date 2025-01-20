@@ -8372,7 +8372,7 @@ class MiddsString extends MiddsInput {
   }
   intoSubstrateType() {
     if (!this.Value) {
-      throw new Error(`Null value cannot be parsed to Substrate type`);
+      return;
     } else {
       return toHex(this.Value);
     }
@@ -8399,9 +8399,21 @@ class MiddsNumber extends MiddsInput {
   }
   intoSubstrateType() {
     if (!this.Value) {
-      throw new Error(`Null value cannot be parsed to Substrate type`);
+      return;
     } else
       return BigInt(this.Value);
+  }
+}
+
+class MiddsNumberNonBigInt extends MiddsInput {
+  constructor(name) {
+    super(name);
+  }
+  intoSubstrateType() {
+    if (!this.Value) {
+      return;
+    } else
+      return this.Value;
   }
 }
 // src/midds/stakeholder.ts
@@ -8440,11 +8452,14 @@ class Stakeholder extends Midds {
     return this.getInput("nickname");
   }
   parseIntoSubstrateType() {
+    if (!this.isValid) {
+      throw new Error("Midds data must be valid");
+    }
     return {
-      ipi: this.IPI.isValid && this.IPI.Value ? this.IPI.intoSubstrateType() : undefined,
-      firstName: this.FirstName.isValid && this.FirstName.Value ? this.FirstName.intoSubstrateType() : undefined,
-      lastName: this.LastName.isValid && this.LastName.Value ? this.LastName.intoSubstrateType() : undefined,
-      nickname: this.Nickname.isValid && this.Nickname.Value ? this.Nickname.intoSubstrateType() : undefined
+      ipi: this.IPI.Value ? this.IPI.intoSubstrateType() : undefined,
+      firstName: this.FirstName.Value ? this.FirstName.intoSubstrateType() : undefined,
+      lastName: this.LastName.Value ? this.LastName.intoSubstrateType() : undefined,
+      nickname: this.Nickname.Value ? this.Nickname.intoSubstrateType() : undefined
     };
   }
 }
@@ -8475,12 +8490,156 @@ class Nickname extends MiddsString {
     super("Nickname", null, 128);
   }
 }
+// src/midds/musicalWork.ts
+class MusicalWork extends Midds {
+  constructor() {
+    const inputs = {
+      iswc: new ISWC,
+      title: new MusicalWorkTitle,
+      duration: new MusicalWorkDuration,
+      musicalWorkType: new MusicalWorkType,
+      shares: new Shares
+    };
+    super("musicalWorks", inputs);
+  }
+  get ISWC() {
+    return this.getInput("iswc");
+  }
+  get Title() {
+    return this.getInput("title");
+  }
+  get Duration() {
+    return this.getInput("duration");
+  }
+  get MusicalWorkType() {
+    return this.getInput("musicalWorkType");
+  }
+  get Shares() {
+    return this.getInput("shares");
+  }
+  set ISWC(iswc) {
+    this.ISWC.Value = iswc;
+  }
+  set Title(title) {
+    this.Title.Value = title;
+  }
+  set Duration(duration) {
+    this.Duration.Value = duration;
+  }
+  set MusicalWorkType(musicalWorkType) {
+    this.MusicalWorkType.Value = musicalWorkType;
+  }
+  set Shares(shares) {
+    this.Shares.Value = shares;
+  }
+  parseIntoSubstrateType() {
+    if (!this.isValid) {
+      throw new Error("Midds data must be valid");
+    }
+    return {
+      iswc: this.ISWC.intoSubstrateType(),
+      title: this.Title.intoSubstrateType(),
+      duration: this.Duration.intoSubstrateType(),
+      type: this.MusicalWorkType.intoSubstrateType(),
+      shares: this.Shares.intoSubstrateType()
+    };
+  }
+}
+
+class ISWC extends MiddsInput {
+  constructor() {
+    super("ISWC");
+  }
+  get isValid() {
+    if (this.Value) {
+      return this.Value.group1.toString().length <= 3 && this.Value.group2.toString().length <= 3 && this.Value.group3.toString().length <= 3 && this.Value.checkDigit.toString().length === 1;
+    } else
+      return true;
+  }
+  intoSubstrateType() {
+    if (this.Value) {
+      return {
+        group1: this.Value.group1,
+        group2: this.Value.group2,
+        group3: this.Value.group3,
+        checkDigit: this.Value.checkDigit
+      };
+    } else
+      return;
+  }
+}
+
+class MusicalWorkTitle extends MiddsString {
+  constructor() {
+    super("Title", null, 128);
+  }
+}
+
+class MusicalWorkDuration extends MiddsNumberNonBigInt {
+  constructor() {
+    super("Duration");
+  }
+  get isValid() {
+    return this.Value ? this.Value > 0 : true;
+  }
+}
+
+class MusicalWorkType extends MiddsInput {
+  constructor() {
+    super("Type");
+  }
+  get isValid() {
+    return true;
+  }
+  intoSubstrateType() {
+    return this.Value ? this.Value : undefined;
+  }
+}
+
+class Shares extends MiddsInput {
+  value = [];
+  constructor() {
+    super("Shares");
+  }
+  get Value() {
+    return this.value;
+  }
+  set Value(value) {
+    this.value = value;
+  }
+  get isValid() {
+    if (this.Value && this.Value.length > 0) {
+      this.Value.every((share) => share.shareInfo.performanceShare <= 100 && share.shareInfo.mechanicalShare <= 100);
+    }
+    return true;
+  }
+  intoSubstrateType() {
+    if (this.Value && this.Value.length > 0) {
+      return this.Value.map((share) => ({
+        stakeholderId: share.stakeholderId,
+        shareInfo: share.shareInfo
+      }));
+    }
+    return;
+  }
+}
 export {
   Stakeholder,
+  Shares,
+  Nickname,
+  MusicalWorkType,
+  MusicalWorkTitle,
+  MusicalWorkDuration,
+  MusicalWork,
   MiddsString,
+  MiddsNumberNonBigInt,
   MiddsNumber,
   MiddsInput,
   Midds,
+  LastName,
+  ISWC,
+  IPINameNumber,
+  FirstName,
   AllfeatProvider,
   AllfeatClient
 };

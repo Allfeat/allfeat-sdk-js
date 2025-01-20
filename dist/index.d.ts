@@ -9868,23 +9868,6 @@ export interface AllfeatApi {
 	legacy: VersionedAllfeatApi<RpcLegacy>;
 	v2: VersionedAllfeatApi<RpcV2>;
 }
-export type AllfeatNetwork = "melodie" | "devnet";
-export type MiddsSubstrateType = MiddsStakeholderStakeholder | MiddsMusicalWorkMusicalWork;
-export declare class AllfeatProvider extends WsProvider {
-	/**
-	 * Create a Provider instance for a specific Allfeat network
-	 * @param networkOrUrl - Network to connect to ('melodie' or 'devnet' or custom URL)
-	 */
-	constructor(networkOrUrl: AllfeatNetwork | string);
-	/**
-	 * List all supported networks
-	 */
-	static getSupportedNetworks(): AllfeatNetwork[];
-}
-export declare class AllfeatClient extends DedotClient<AllfeatApi> {
-	constructor(provider: AllfeatProvider);
-	static new(provider: AllfeatProvider): Promise<AllfeatClient>;
-}
 export interface IMiddsInput<T, SubstrateType> {
 	get Value(): T | null;
 	get Name(): string;
@@ -9925,6 +9908,10 @@ export declare abstract class MiddsNumberNonBigInt extends MiddsInput<number, nu
 	protected constructor(name: string);
 	intoSubstrateType(): number | undefined;
 }
+export declare class AllfeatClient extends DedotClient<AllfeatApi> {
+	constructor(provider: AllfeatProvider);
+	static new(provider: AllfeatProvider): Promise<AllfeatClient>;
+}
 export declare abstract class Midds<T extends Record<string, IMiddsInput<any, any>>> implements IMidds<T> {
 	private readonly _palletName;
 	inputs: T;
@@ -9962,39 +9949,7 @@ export interface IRegisterResult {
 	readonly provider: string;
 	readonly collateralCost: bigint;
 }
-export interface StakeholderInputs {
-	[key: string]: IMiddsInput<any, any>;
-	ipi: IPINameNumber;
-	firstName: FirstName;
-	lastName: LastName;
-	nickname: Nickname;
-}
-export declare class Stakeholder extends Midds<StakeholderInputs> {
-	constructor();
-	set IPI(IPI: number | null);
-	set FirstName(FirstName: string | null);
-	set LastName(LastName: string | null);
-	set Nickname(Nickname: string | null);
-	get IPI(): IPINameNumber;
-	get FirstName(): FirstName;
-	get LastName(): LastName;
-	get Nickname(): Nickname;
-	parseIntoSubstrateType(): MiddsStakeholderStakeholder;
-}
-export declare class IPINameNumber extends MiddsNumber {
-	constructor();
-	get isValid(): boolean;
-}
-export declare class FirstName extends MiddsString {
-	constructor();
-}
-export declare class LastName extends MiddsString {
-	constructor();
-}
-export declare class Nickname extends MiddsString {
-	constructor();
-}
-export interface MusicalWorkInput {
+export interface MusicalWorkInputs {
 	[key: string]: IMiddsInput<any, any>;
 	iswc: ISWC;
 	title: MusicalWorkTitle;
@@ -10002,7 +9957,7 @@ export interface MusicalWorkInput {
 	musicalWorkType: MusicalWorkType;
 	shares: Shares;
 }
-export declare class MusicalWork extends Midds<MusicalWorkInput> {
+export declare class MusicalWork extends Midds<MusicalWorkInputs> {
 	constructor();
 	get ISWC(): ISWC;
 	get Title(): MusicalWorkTitle;
@@ -10055,6 +10010,52 @@ export declare class Shares extends MiddsInput<IShare[], MiddsMusicalWorkShare[]
 	set Value(value: IShare[]);
 	get isValid(): boolean;
 	intoSubstrateType(): MiddsMusicalWorkShare[] | undefined;
+}
+export interface StakeholderInputs {
+	[key: string]: IMiddsInput<any, any>;
+	ipi: IPINameNumber;
+	firstName: FirstName;
+	lastName: LastName;
+	nickname: Nickname;
+}
+export declare class Stakeholder extends Midds<StakeholderInputs> {
+	constructor();
+	set IPI(IPI: number | null);
+	set FirstName(FirstName: string | null);
+	set LastName(LastName: string | null);
+	set Nickname(Nickname: string | null);
+	get IPI(): IPINameNumber;
+	get FirstName(): FirstName;
+	get LastName(): LastName;
+	get Nickname(): Nickname;
+	parseIntoSubstrateType(): MiddsStakeholderStakeholder;
+}
+export declare class IPINameNumber extends MiddsNumber {
+	constructor();
+	get isValid(): boolean;
+}
+export declare class FirstName extends MiddsString {
+	constructor();
+}
+export declare class LastName extends MiddsString {
+	constructor();
+}
+export declare class Nickname extends MiddsString {
+	constructor();
+}
+export type AllfeatNetwork = "melodie" | "devnet";
+export type MiddsSubstrateType = MiddsStakeholderStakeholder | MiddsMusicalWorkMusicalWork;
+export type MiddsInputs = StakeholderInputs | MusicalWorkInputs;
+export declare class AllfeatProvider extends WsProvider {
+	/**
+	 * Create a Provider instance for a specific Allfeat network
+	 * @param networkOrUrl - Network to connect to ('melodie' or 'devnet' or custom URL)
+	 */
+	constructor(networkOrUrl: AllfeatNetwork | string);
+	/**
+	 * List all supported networks
+	 */
+	static getSupportedNetworks(): AllfeatNetwork[];
 }
 
 export {};
