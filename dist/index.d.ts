@@ -9981,6 +9981,7 @@ export declare class ISWC extends MiddsInput<ISWCValue, AllfeatSupportIswc> {
 	constructor();
 	get isValid(): boolean;
 	intoSubstrateType(): AllfeatSupportIswc | undefined;
+	toString(): string;
 }
 export declare class MusicalWorkTitle extends MiddsString {
 	constructor();

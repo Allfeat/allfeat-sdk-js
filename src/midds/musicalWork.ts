@@ -114,6 +114,12 @@ export class ISWC extends MiddsInput<ISWCValue, AllfeatSupportIswc> {
       }
     } else return undefined
   }
+
+  toString(): string {
+    if (this.Value !== null) {
+      return "T-" + this.Value.group1 + "." + this.Value.group2 + "." + this.Value.group3 + "-" + this.Value.checkDigit;
+    } else return "null";
+  }
 }
 
 export class MusicalWorkTitle extends MiddsString {
